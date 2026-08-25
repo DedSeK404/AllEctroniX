@@ -2,11 +2,26 @@ import { useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { Eye, EyeOff, Mail } from "lucide-react";
 import loginArt from "../../../assets/images/loginArt.svg";
+import { useAuthStore } from "../../../store/useAuthStore";
 
 export default function SignIn() {
-  const [showPassword, setShowPassword] = useState(false);
+  const [email, setEmail] = useState<string>("");
+  const [password, setPassword] = useState<string>("");
+  const [showPassword, setShowPassword] = useState<boolean>(false);
+
+  const login = useAuthStore((state) => state.login);
 
   const navigate = useNavigate();
+
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+
+    // Trigger front-end mock login
+    login(email);
+
+    // Navigate to dashboard/home after successful sign in
+    navigate("/dashboard");
+  };
   return (
     <div className="min-h-screen w-full flex items-center justify-center bg-linear-to-bl from-[#9073E9] to-[#5A39C6] p-4 sm:p-6 lg:p-8">
       <div className="card card-side flex-col md:flex-row bg-[rgb(28,28,34)] text-white shadow-2xl w-full max-w-7xl h-auto  overflow-hidden border border-neutral-800">
@@ -31,7 +46,7 @@ export default function SignIn() {
             </span>
           </h2>
 
-          <form className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-4">
             <fieldset className="fieldset">
               <legend className="fieldset-legend text-neutral-300 text-lg">
                 Email
@@ -39,6 +54,10 @@ export default function SignIn() {
               <div className="relative w-full">
                 <input
                   required
+                  value={email}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                    setEmail(e.target.value)
+                  }
                   type="email"
                   className="input input-bordered w-full bg-neutral-900 border-neutral-700 text-white placeholder:text-neutral-500"
                   placeholder="Type your email here"
@@ -59,6 +78,10 @@ export default function SignIn() {
               <div className="relative w-full">
                 <input
                   required
+                  value={password}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                    setPassword(e.target.value)
+                  }
                   type={showPassword ? "text" : "password"}
                   className="input input-bordered w-full bg-neutral-900 border-neutral-700 text-white placeholder:text-neutral-500 pr-10"
                   placeholder="*********"

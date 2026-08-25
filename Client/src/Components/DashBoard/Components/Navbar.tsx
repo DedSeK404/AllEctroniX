@@ -1,5 +1,6 @@
 import { Part } from "@/Types/types";
 import { useNavigate } from "react-router-dom";
+import { useAuthStore } from "../../../store/useAuthStore";
 
 interface NavbarProps {
   parts: Part[];
@@ -8,7 +9,16 @@ interface NavbarProps {
 
 const Navbar = ({ parts, onSelectCategory }: NavbarProps) => {
   const navigate = useNavigate();
-  console.log(parts);
+
+  const user = useAuthStore((state) => state.user);
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const logout = useAuthStore((state) => state.logout);
+
+  const handleLogout = () => {
+    logout();
+    navigate("/dashboard");
+  };
+
   return (
     <div className="navbar bg-base-100 shadow-sm border-b border-base-200">
       {/* Total Count Badge */}

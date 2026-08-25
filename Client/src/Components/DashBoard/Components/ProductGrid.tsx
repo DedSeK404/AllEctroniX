@@ -1,5 +1,6 @@
 import { Part } from "@/Types/types";
 import { useState } from "react";
+import ProductCard from "./ProductCard";
 
 interface ProductGridProps {
   parts: Part[];
@@ -43,41 +44,9 @@ const ProductGrid = ({ parts, selectedCategory }: ProductGridProps) => {
 
       {/* Product Cards Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {currentParts.map((part: any, index) => {
-          // Fallbacks for key properties in case CSV headers vary
-          const partCode =
-            part.code || part.Code || part["LCSC Part"] || `part-${index}`;
-          const brandName =
-            part.brand || part.Brand || part.Manufacturer || "Generic";
-          const description =
-            part.describe ||
-            part.Describe ||
-            part.Description ||
-            "No description available";
-          const price = part.price || part.Price || "N/A";
-          const stock = part.stock || part.Stock || 0;
-
-          return (
-            <div
-              key={partCode}
-              className="card bg-base-100 border border-base-200 shadow-sm p-4"
-            >
-              <span className="badge badge-secondary badge-sm mb-2">
-                {brandName}
-              </span>
-              <h3 className="font-bold text-md">{partCode}</h3>
-              <p className="text-xs text-gray-500 line-clamp-2 my-2">
-                {description}
-              </p>
-              <div className="mt-auto flex justify-between items-center pt-2 border-t border-base-200">
-                <span className="font-bold text-primary">${price}</span>
-                <span className="text-xs text-gray-400">
-                  Stock: {Number(stock).toLocaleString()}
-                </span>
-              </div>
-            </div>
-          );
-        })}
+        {currentParts.map((part: any, index: number) => (
+          <ProductCard key={part.code || `part-${index}`} part={part} />
+        ))}
       </div>
 
       {/* Pagination Controls */}
