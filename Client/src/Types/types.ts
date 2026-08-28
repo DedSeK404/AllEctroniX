@@ -7,4 +7,5 @@ export interface Part {
   price: number;
   stock: number;
   category: string;
+  file?: string;
 }
