@@ -4,27 +4,30 @@ import { useAuthStore } from "../../../store/useAuthStore";
 import { useCartStore } from "@/Components/DashBoard/Components/useCartStore";
 import UserProfile from "@/Components/UserProfile/UserProfile";
 import Logo from "../../../assets/images/logo.svg";
+import AiAssistantDropdown from "./AssistantDropdown";
+import Cart from "./Cart";
+import { useState } from "react";
 
 interface NavbarProps {
   parts: Part[];
   onSelectCategory: (category: string) => void;
-}export interface CartItem {
+  onSelectView: (currentView: "catalog" | "assistant") => void;
+}
+export interface CartItem {
   part: Part;
   quantity: number;
 }
 
-const Navbar = ({ parts, onSelectCategory }: NavbarProps) => {
+const Navbar = ({ onSelectCategory, onSelectView }: NavbarProps) => {
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
   const navigate = useNavigate();
 
   const user = useAuthStore((state) => state.user);
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
 
   // Access cart state and action methods from Zustand store
-  const items = useCartStore((state) => state.items);
+
   const totalItems = useCartStore((state) => state.getTotalItems());
-  const totalPrice = useCartStore((state) => state.getTotalPrice());
-  const updateQuantity = useCartStore((state) => state.updateQuantity);
-  const removeItem = useCartStore((state) => state.removeItem);
 
   return (
     <div className="navbar bg-base-100 shadow-sm border-b border-base-200">
@@ -57,7 +60,9 @@ const Navbar = ({ parts, onSelectCategory }: NavbarProps) => {
           <span className="megamenu-active"></span>
 
           {/* Tab 1: Live Components Catalog */}
-          <button popoverTarget="d1">Components Catalog</button>
+          <button popoverTarget="d1" onClick={() => onSelectView("catalog")}>
+            Components Catalog
+          </button>
           <div id="d1" popover="auto">
             <div className="flex max-sm:flex-col items-start p-2 gap-4">
               <ul className="menu w-full md:menu-horizontal">
@@ -235,25 +240,21 @@ const Navbar = ({ parts, onSelectCategory }: NavbarProps) => {
           </div>
 
           {/* Tab 2: AI Hardware Diagnostic Assistant */}
-          <button popoverTarget="d2">AI Assistant</button>
+          <button popoverTarget="d2" onClick={() => setIsMenuOpen(true)}>
+            AI Assistant
+          </button>
+
           <div id="d2" popover="auto">
-            <div className="flex max-sm:flex-col items-start p-4 gap-4">
-              <div className="max-w-md">
-                <h3 className="font-bold text-lg text-primary mb-1">
-                  Hardware Diagnostic Helper
-                </h3>
-                <p className="text-xs text-gray-500 mb-3">
-                  Describe circuit symptoms or paste schematics/logs to get
-                  automated fault detection and component replacement matches.
-                </p>
-                <button
-                  className="btn btn-sm btn-primary"
-                  onClick={() => navigate("/assistant")}
-                >
-                  Launch LLM Helper
-                </button>
-              </div>
-            </div>
+            {isMenuOpen && (
+              <AiAssistantDropdown
+                onSelectView={onSelectView}
+                onClose={() => {
+                  setIsMenuOpen(false);
+                  // Closes the native browser popover when a selection is made
+                  document.getElementById("d2")?.hidePopover();
+                }}
+              />
+            )}
           </div>
         </div>
       </div>
@@ -262,11 +263,7 @@ const Navbar = ({ parts, onSelectCategory }: NavbarProps) => {
       <div className="navbar-end gap-3">
         {/* Shopping Cart Dropdown */}
         <div className="dropdown dropdown-end">
-          <div
-            tabIndex={0}
-            role="button"
-            className="btn btn-ghost btn-circle"
-          >
+          <div tabIndex={0} role="button" className="btn btn-ghost btn-circle">
             <div className="indicator">
               <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -291,90 +288,7 @@ const Navbar = ({ parts, onSelectCategory }: NavbarProps) => {
           </div>
 
           {/* Cart Dropdown Content */}
-          <div
-            tabIndex={0}
-            className="dropdown-content card card-compact w-80 sm:w-96 p-2 shadow-lg bg-base-100 rounded-box border border-base-200 z-[100]"
-          >
-            <div className="card-body">
-              <span className="font-bold text-lg">{totalItems} Items</span>
-
-              <div className="divider my-1"></div>
-
-              {/* Items List */}
-              <div className="max-h-60 overflow-y-auto space-y-3">
-                {items.length === 0 ? (
-                  <p className="text-center text-gray-500 py-4">
-                    Your cart is empty.
-                  </p>
-                ) : (
-                  items.map((item: CartItem) => (
-                    <div
-                      key={item.part.code}
-                      className="flex items-center justify-between gap-2 border-b border-base-200 pb-2"
-                    >
-                      <div className="flex-1 min-w-0">
-                        <p className="font-semibold text-sm truncate">
-                          {item.part.model || item.part.code}
-                        </p>
-                        <p className="text-xs text-gray-500">
-                          ${item.part.price.toFixed(2)} each
-                        </p>
-                      </div>
-
-                      {/* Quantity Selector */}
-                      <div className="flex items-center gap-1">
-                        <button
-                          className="btn btn-xs btn-outline"
-                          onClick={() =>
-                            updateQuantity(item.part.code, item.quantity - 1)
-                          }
-                        >
-                          -
-                        </button>
-                        <span className="text-xs font-semibold px-1">
-                          {item.quantity}
-                        </span>
-                        <button
-                          className="btn btn-xs btn-outline"
-                          onClick={() =>
-                            updateQuantity(item.part.code, item.quantity + 1)
-                          }
-                        >
-                          +
-                        </button>
-                      </div>
-
-                      {/* Remove Button */}
-                      <button
-                        className="btn btn-xs btn-ghost text-error"
-                        onClick={() => removeItem(item.part.code)}
-                      >
-                        ✕
-                      </button>
-                    </div>
-                  ))
-                )}
-              </div>
-
-              <div className="divider my-1"></div>
-
-              {/* Subtotal & Checkout */}
-              <div className="flex justify-between items-center font-bold text-base">
-                <span>Subtotal:</span>
-                <span className="text-primary">${totalPrice.toFixed(2)}</span>
-              </div>
-
-              <div className="card-actions mt-2">
-                <button
-                  className="btn btn-primary btn-block"
-                  disabled={items.length === 0}
-                  onClick={() => navigate("/cart")}
-                >
-                  View Cart / Checkout
-                </button>
-              </div>
-            </div>
-          </div>
+          <Cart />
         </div>
 
         {/* User Auth Info */}
