@@ -22,3 +22,15 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+# Python / Server (FastAPI)
+server/venv/
+server/__pycache__/
+app/__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Environment Variables & Local Databases
+.env
+*.db
+*.sqlite3

@@ -35,19 +35,19 @@ export const AssistantMainPage: React.FC = () => {
         <div className="flex items-center gap-2 overflow-x-auto pb-1 md:pb-0">
           <button
             onClick={() => handlePresetClick("📷 Inspect PCB board photo for damage")}
-            className="btn btn-xs btn-outline btn-primary gap-1 whitespace-nowrap"
+            className="btn btn-xs btn-outline btn-primary gap-1 whitespace-nowrap pointer-events-none"
           >
             📷 Inspect PCB Photo
           </button>
           <button
             onClick={() => handlePresetClick("⚡ Troubleshoot power rail voltage drop")}
-            className="btn btn-xs btn-outline btn-secondary gap-1 whitespace-nowrap"
+            className="btn btn-xs btn-outline btn-secondary gap-1 whitespace-nowrap pointer-events-none"
           >
             ⚡ Debug Power Rail
           </button>
           <button
             onClick={() => handlePresetClick("🔍 Find substitute for obsolete IC")}
-            className="btn btn-xs btn-outline btn-accent gap-1 whitespace-nowrap"
+            className="btn btn-xs btn-outline btn-accent gap-1 whitespace-nowrap pointer-events-none"
           >
             🔍 Component Search
           </button>

@@ -1,0 +1,47 @@
+[
+  {
+    "part_number": "TDA7385",
+    "name": "Quad Bridge Audio Power Amplifier",
+    "category": "Integrated Circuits",
+    "subcategory": "Audio Amplifiers",
+    "price": 4.99,
+    "stock": 120,
+    "package": "FLEXIWATT25",
+    "description": "4 x 30W quad bridge car radio audio amplifier",
+    "symptoms": ["No sound output", "Blown fuse", "Excessive heat"],
+    "specs": {
+      "maxVoltage": "18V",
+      "outputPower": "4 x 30W"
+    }
+  },
+  {
+    "part_number": "1N4007",
+    "name": "Standard Recovery Rectifier Diode",
+    "category": "Diodes",
+    "subcategory": "Rectifiers",
+    "price": 0.10,
+    "stock": 2500,
+    "package": "DO-41",
+    "description": "1A 1000V general purpose rectifier diode",
+    "symptoms": ["Short circuit", "Reverse voltage leak"],
+    "specs": {
+      "maxVoltage": "1000V",
+      "currentRating": "1A"
+    }
+  },
+  {
+    "part_number": "NE555P",
+    "name": "Single Precision Timer",
+    "category": "Integrated Circuits",
+    "subcategory": "Timers",
+    "price": 0.55,
+    "stock": 850,
+    "package": "DIP-8",
+    "description": "Precision timing circuit capable of producing accurate time delays or oscillation",
+    "symptoms": ["No clock output", "Stuck high", "Stuck low"],
+    "specs": {
+      "supplyVoltage": "4.5V - 15V",
+      "maxFrequency": "500kHz"
+    }
+  }
+]
