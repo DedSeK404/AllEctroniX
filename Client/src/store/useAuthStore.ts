@@ -1,47 +1,42 @@
 import { create } from "zustand";
 
-interface User {
-  id: string;
-  username: string;
+export interface User {
+  id: string | number;
   email: string;
+  username?: string;
+  is_active?: boolean;
 }
 
 interface AuthState {
+  token: string | null;
   user: User | null;
   isAuthenticated: boolean;
-  login: (email: string) => void;
-  signup: (username: string, email: string) => void;
+  login: (token: string, user: User) => void;
   logout: () => void;
 }
 
 export const useAuthStore = create<AuthState>((set) => ({
+  token: localStorage.getItem("token"),
   user: null,
-  isAuthenticated: false,
+  isAuthenticated: !!localStorage.getItem("token"),
 
-  // Called from SignIn.tsx after basic form validation
-  login: (email: string) => {
+  // Called after successful authentication & fetching /api/auth/me
+  login: (token: string, user: User) => {
+    localStorage.setItem("token", token);
     set({
+      token,
+      user,
       isAuthenticated: true,
-      user: { 
-        id: "usr_mock123", 
-        username: email.split("@")[0], // Mock username from email
-        email 
-      },
     });
   },
 
-  // Called from SignUp.tsx with username & email
-  signup: (username: string, email: string) => {
+  // Clears active session and token from localStorage
+  logout: () => {
+    localStorage.removeItem("token");
     set({
-      isAuthenticated: true,
-      user: { 
-        id: "usr_mock123", 
-        username, 
-        email 
-      },
+      token: null,
+      user: null,
+      isAuthenticated: false,
     });
   },
-
-  // Clears active user session
-  logout: () => set({ user: null, isAuthenticated: false }),
 }));

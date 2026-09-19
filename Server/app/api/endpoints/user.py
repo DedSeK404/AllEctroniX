@@ -1,63 +1,56 @@
-import uuid
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-
+from pydantic import BaseModel, EmailStr
+from app.core.deps import get_current_user
 from app.db.session import get_db
 from app.models.user import UserModel
-from app.schemas.user import UserCreate, UserResponse
+from app.core.security import get_password_hash, verify_password, create_access_token
 
 router = APIRouter()
 
+# Pydantic Schemas
+class UserCreate(BaseModel):
+    email: EmailStr
+    password: str
 
-@router.post(
-    "/register",
-    response_model=UserResponse,
-    status_code=status.HTTP_201_CREATED,
-)
-def register_user(user_in: UserCreate, db: Session = Depends(get_db)):
-    """Register a new user in PostgreSQL."""
-    # 1. Check if user with this email already exists
-    existing_user = (
-        db.query(UserModel).filter(UserModel.email == user_in.email).first()
-    )
+class Token(BaseModel):
+    access_token: str
+    token_type: str
+
+# 1. Register Endpoint
+@router.post("/register", status_code=status.HTTP_201_CREATED)
+def register(user_data: UserCreate, db: Session = Depends(get_db)):
+    existing_user = db.query(UserModel).filter(UserModel.email == user_data.email).first()
     if existing_user:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="User with this email already exists",
-        )
+        raise HTTPException(status_code=400, detail="Email already registered")
 
-    # 2. Instantiate new UserModel object
-    new_user = UserModel(
-        id=f"user-{uuid.uuid4().hex[:8]}",
-        email=user_in.email,
-        password=user_in.password,  # Note: Hashing will be added later!
-    )
-
-    # 3. Stage, commit, and refresh instance
+    hashed_pwd = get_password_hash(user_data.password)
+    new_user = UserModel(email=user_data.email, hashed_password=hashed_pwd)
+    
     db.add(new_user)
     db.commit()
     db.refresh(new_user)
+    
+    return {"message": "User created successfully", "user_id": new_user.id}
 
-    # 4. Return new user (FastAPI converts it using UserResponse schema)
-    return new_user
-
-
-@router.post("/login", response_model=UserResponse)
-def login_user(credentials: UserCreate, db: Session = Depends(get_db)):
-    """Authenticate a user against PostgreSQL."""
-    # 1. Look up user by email
-    user = (
-        db.query(UserModel)
-        .filter(UserModel.email == credentials.email)
-        .first()
-    )
-
-    # 2. Verify existence and match password
-    if not user or user.password != credentials.password:
+# 2. Login Endpoint
+@router.post("/login", response_model=Token)
+def login(credentials: UserCreate, db: Session = Depends(get_db)):
+    user = db.query(UserModel).filter(UserModel.email == credentials.email).first()
+    if not user or not verify_password(credentials.password, user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid email or password",
+            detail="Incorrect email or password",
         )
 
-    # 3. Return user profile upon successful verification
-    return user
+    access_token = create_access_token(data={"sub": str(user.id), "email": user.email})
+    return {"access_token": access_token, "token_type": "bearer"}
+
+@router.get("/me")
+def read_current_user(current_user: UserModel = Depends(get_current_user)):
+    """Retrieve details for the currently authenticated user."""
+    return {
+        "id": current_user.id,
+        "email": current_user.email,
+        "is_active": current_user.is_active,
+    }

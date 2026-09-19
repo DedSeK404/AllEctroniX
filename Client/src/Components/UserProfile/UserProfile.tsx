@@ -1,13 +1,7 @@
-import { useAuthStore } from "@/store/useAuthStore";
+import { useAuthStore, User } from "@/store/useAuthStore";
 import { useNavigate } from "react-router-dom";
 
-interface User {
-  id: string;
-  username: string;
-  email: string;
-}
-
-// 2. Define the Component Props interface
+// 1. Use the shared User interface or make fields optional
 interface UserProfileProps {
   user: User;
 }
@@ -15,10 +9,17 @@ interface UserProfileProps {
 const UserProfile = ({ user }: UserProfileProps) => {
   const navigate = useNavigate();
   const logout = useAuthStore((state) => state.logout);
+
   const handleLogout = () => {
     logout();
     navigate("/login/signin");
   };
+
+  // Safe fallback for display name & avatar initial
+  const displayName =
+    user?.username || user?.email?.split("@")[0] || "User";
+  const avatarInitial = displayName.charAt(0).toUpperCase();
+
   return (
     <div className="navbar-end gap-2">
       <div className="dropdown dropdown-end">
@@ -28,7 +29,7 @@ const UserProfile = ({ user }: UserProfileProps) => {
           className="btn btn-ghost btn-circle avatar border border-[#B100D6]"
         >
           <div className="w-10 rounded-full flex items-center justify-center bg-neutral-800 text-white font-bold">
-            {user.username.charAt(0).toUpperCase()}
+            {avatarInitial}
           </div>
         </div>
         <ul
@@ -37,10 +38,10 @@ const UserProfile = ({ user }: UserProfileProps) => {
         >
           <li className="px-3 py-2 border-b border-neutral-800 pointer-events-none select-none">
             <span className="font-semibold text-[#B100D6] p-0 block">
-              {user.username}
+              {displayName}
             </span>
             <span className="text-xs text-neutral-400 p-0 block">
-              {user.email}
+              {user?.email}
             </span>
           </li>
           <li>

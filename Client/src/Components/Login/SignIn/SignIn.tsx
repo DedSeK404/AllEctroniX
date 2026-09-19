@@ -1,36 +1,59 @@
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
-import { Eye, EyeOff, Mail } from "lucide-react";
+import { Eye, EyeOff, Mail, Loader2 } from "lucide-react";
 import loginArt from "../../../assets/images/loginArt.svg";
 import { useAuthStore } from "../../../store/useAuthStore";
+import { loginUser, fetchCurrentUser } from "../../../api/AuthService";
 
 export default function SignIn() {
   const [email, setEmail] = useState<string>("");
   const [password, setPassword] = useState<string>("");
   const [showPassword, setShowPassword] = useState<boolean>(false);
+  const [error, setError] = useState<string>("");
+  const [loading, setLoading] = useState<boolean>(false);
 
   const login = useAuthStore((state) => state.login);
-
   const navigate = useNavigate();
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    setError("");
+    setLoading(true);
 
-    // Trigger front-end mock login
-    login(email);
+    try {
+      // 1. Send credentials to auth endpoint & retrieve token
+      const data = await loginUser(email, password);
 
-    // Navigate to dashboard/home after successful sign in
-    navigate("/dashboard");
+      if (data.access_token) {
+        // 2. Fetch authenticated user profile details
+        const userData = await fetchCurrentUser();
+
+        // 3. Update Zustand store with token and user object
+        login(data.access_token, userData);
+
+        // 4. Redirect to dashboard
+        navigate("/dashboard");
+      }
+    } catch (err: any) {
+      const message =
+        err.response?.data?.detail || "Login failed. Please check your credentials.";
+      setError(typeof message === "string" ? message : "Invalid credentials");
+          console.log(message)
+    } finally {
+      setLoading(false);
+    }
+
   };
+
   return (
     <div className="min-h-screen w-full flex items-center justify-center bg-linear-to-bl from-[#9073E9] to-[#5A39C6] p-4 sm:p-6 lg:p-8">
-      <div className="card card-side flex-col md:flex-row bg-[rgb(28,28,34)] text-white shadow-2xl w-full max-w-7xl h-auto  overflow-hidden border border-neutral-800">
-        {/* Left Side: 100% Height Illustration Wrapper */}
+      <div className="card card-side flex-col md:flex-row bg-[rgb(28,28,34)] text-white shadow-2xl w-full max-w-7xl h-auto overflow-hidden border border-neutral-800">
+        {/* Left Side: Illustration Wrapper */}
         <figure className="w-full">
           <img
             src={loginArt}
             alt="Login illustration"
-            className="w-full h-full object-contain "
+            className="w-full h-full object-contain"
             draggable="false"
           />
         </figure>
@@ -47,6 +70,13 @@ export default function SignIn() {
           </h2>
 
           <form onSubmit={handleSubmit} className="space-y-4">
+            {/* Display Server Errors */}
+            {error && (
+              <div className="p-3 bg-red-500/10 border border-red-500/50 rounded-lg text-red-400 text-sm">
+                {error}
+              </div>
+            )}
+
             <fieldset className="fieldset">
               <legend className="fieldset-legend text-neutral-300 text-lg">
                 Email
@@ -64,7 +94,7 @@ export default function SignIn() {
                 />
                 <button
                   type="button"
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400  "
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400"
                 >
                   <Mail className="w-5 h-5" />
                 </button>
@@ -101,13 +131,25 @@ export default function SignIn() {
             </fieldset>
 
             <div className="pt-4">
-              <button className="btn btn-primary w-full text-lg">
-                Sign in
+              <button
+                type="submit"
+                onClick={()=>handleSubmit}
+                disabled={loading}
+                className="btn btn-primary w-full text-lg flex items-center justify-center gap-2"
+              >
+                {loading ? (
+                  <>
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                    Signing in...
+                  </>
+                ) : (
+                  "Sign in"
+                )}
               </button>
               <p className="mt-7 text-xl">
                 Don't have an account?{" "}
                 <a
-                  className="link link-hover text-[#B100D6]"
+                  className="link link-hover text-[#B100D6] cursor-pointer"
                   onClick={() => navigate("/login/signup")}
                 >
                   Click here
