@@ -11,9 +11,11 @@ class UserBase(BaseModel):
 class UserCreate(UserBase):
     password: str
 
+class UserLogin(UserBase):
+    password: str
 
 # Response schema (excludes password to prevent leaking sensitive data)
 class UserResponse(UserBase):
     id: str
 
-    model_config = ConfigDict(from_attributes=True)
+    model_config = ConfigDict(from_attributes=True) 
