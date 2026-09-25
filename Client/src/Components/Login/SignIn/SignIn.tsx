@@ -16,9 +16,18 @@ export default function SignIn() {
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+
     e.preventDefault();
     setError("");
     setLoading(true);
+
+    const isValidEmail = (str: string) => /\S+@\S+\.\S+/.test(str);
+
+if (!isValidEmail(email)) {
+  setError("Please enter a valid email address.");
+   setLoading(false);
+  return; // Stop execution here so it doesn't make the API call
+}
 
     try {
       // 1. Send credentials to auth endpoint & retrieve token
@@ -35,11 +44,18 @@ export default function SignIn() {
         navigate("/dashboard");
       }
     } catch (err: any) {
-      const message =
-        err.response?.data?.detail || "Login failed. Please check your credentials.";
-      setError(typeof message === "string" ? message : "Invalid credentials");
-          console.log(message)
-    } finally {
+  const detail = err.response?.data?.detail;
+
+  if (Array.isArray(detail)) {
+    // Handles FastAPI 422 validation array
+    setError(detail[0]?.msg || "Invalid input format.");
+  } else if (typeof detail === "string") {
+    // Handles FastAPI 401 incorrect credentials string
+    setError(detail);
+  } else {
+    setError("An unexpected error occurred.");
+  }
+}finally {
       setLoading(false);
     }
 
@@ -69,7 +85,7 @@ export default function SignIn() {
             </span>
           </h2>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-4" noValidate>
             {/* Display Server Errors */}
             {error && (
               <div className="p-3 bg-red-500/10 border border-red-500/50 rounded-lg text-red-400 text-sm">

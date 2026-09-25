@@ -30,7 +30,7 @@ def register(credentials: UserCreate, db: Session = Depends(get_db)):
         )
 
     hashed_pwd = get_password_hash(credentials.password)
-    new_user = UserModel(email=credentials.email, hashed_password=hashed_pwd)
+    new_user = UserModel(username=credentials.username, email=credentials.email, hashed_password=hashed_pwd)
 
     db.add(new_user)
     db.commit()

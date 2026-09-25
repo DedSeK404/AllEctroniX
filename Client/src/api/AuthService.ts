@@ -1,7 +1,13 @@
 import apiClient from './Client';
 
-export const registerUser = async (email: string, password: string) => {
-  const response = await apiClient.post('/auth/register', { email, password });
+export interface RegisterPayload {
+  username: string;
+  email: string;
+  password: string;
+}
+
+export const registerUser = async (payload: RegisterPayload) => {
+  const response = await apiClient.post('/auth/register', payload);
   return response.data;
 };
 
@@ -21,4 +27,4 @@ export const fetchCurrentUser = async () => {
 
 export const logoutUser = () => {
   localStorage.removeItem('token');
-};
+}; 

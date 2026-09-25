@@ -27,10 +27,11 @@ const Navbar = ({ onSelectCategory, onSelectView }: NavbarProps) => {
 
   // Access cart state and action methods from Zustand store
 
+
   const totalItems = useCartStore((state) => state.getTotalItems());
 
   return (
-    <div className="navbar bg-base-100 shadow-sm border-b border-base-200">
+    <div className="navbar bg-neutral shadow-sm border-b border-base-200">
       {/* Brand Section */}
       <div className="navbar-start">
         <div className="aura text-purple-400">

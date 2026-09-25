@@ -2,7 +2,11 @@ import { useNavigate } from "react-router-dom";
 import loginArt from "../../../assets/images/loginArt.svg";
 import { useState } from "react";
 import { Eye, EyeOff, Mail, User, Loader2 } from "lucide-react";
-import { registerUser, loginUser, fetchCurrentUser } from "../../../api/AuthService";
+import {
+  registerUser,
+  loginUser,
+  fetchCurrentUser,
+} from "../../../api/AuthService";
 import { useAuthStore } from "../../../store/useAuthStore";
 
 export default function SignUp() {
@@ -12,44 +16,82 @@ export default function SignUp() {
   const [confirmPassword, setConfirmPassword] = useState<string>("");
 
   const [showPassword, setShowPassword] = useState<boolean>(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState<boolean>(false);
+  const [showConfirmPassword, setShowConfirmPassword] =
+    useState<boolean>(false);
   const [error, setError] = useState<string>("");
   const [loading, setLoading] = useState<boolean>(false);
 
   const login = useAuthStore((state) => state.login);
   const navigate = useNavigate();
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    setError("");
+ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+  e.preventDefault();
+  setError("");
 
-    if (password !== confirmPassword) {
-      setError("Passwords do not match.");
-      return;
+  // Helper validation functions
+  const isValidEmail = (str: string) => /\S+@\S+\.\S+/.test(str);
+  const isValidName = (str: string) => /^[a-zA-Z\s'-]+$/.test(str.trim());
+
+  // 1. Client-Side Validation Guards
+  if (!username.trim() || !email || !password || !confirmPassword) {
+    setError("All fields are required.");
+    return;
+  }
+
+  if (!isValidName(username)) {
+    setError("Username/Name can only contain letters, spaces, hyphens, and apostrophes.");
+    return;
+  }
+
+  if (!isValidEmail(email)) {
+    setError("Please enter a valid email address.");
+    return;
+  }
+
+  if (password.length < 8) {
+    setError("Password must be at least 8 characters long.");
+    return;
+  }
+
+  if (password !== confirmPassword) {
+    setError("Passwords do not match.");
+    return;
+  }
+
+  // 2. Network Request Execution
+  setLoading(true);
+
+  try {
+    // Register the user on the backend (passing username alongside email & password)
+    await registerUser({ username, email, password });
+
+    // Auto-login: retrieve token and user profile right after registration
+    const loginData = await loginUser(email, password);
+
+    if (loginData.access_token) {
+      const userData = await fetchCurrentUser();
+      
+      // Update global Zustand state and navigate to app
+      login(loginData.access_token, userData);
+      navigate("/dashboard");
     }
+  } catch (err: any) {
+    const detail = err.response?.data?.detail;
 
-    setLoading(true);
-
-    try {
-      // 1. Register user with API
-      await registerUser(email, password);
-
-      // 2. Automatically log user in after registration
-      const data = await loginUser(email, password);
-      if (data.access_token) {
-        const userData = await fetchCurrentUser();
-        login(data.access_token, userData);
-        navigate("/dashboard");
-      }
-    } catch (err: any) {
-      const message =
-        err.response?.data?.detail || "Registration failed. Please try again.";
-      setError(typeof message === "string" ? message : "Error creating account");
-    } finally {
-      setLoading(false);
+    if (Array.isArray(detail)) {
+      // Handles FastAPI/Pydantic 422 error arrays
+      setError(detail[0]?.msg || "Invalid input format.");
+    } else if (typeof detail === "string") {
+      // Handles 400 Bad Request (e.g., "Email or username already registered")
+      setError(detail);
+    } else {
+      setError("An unexpected error occurred during registration.");
     }
-  };
-console.log(handleSubmit);
+  } finally {
+    setLoading(false);
+  }
+};
+
   return (
     <div className="min-h-screen w-full flex items-center justify-center bg-linear-to-bl from-[#9073E9] to-[#5A39C6] p-4 sm:p-6 lg:p-8">
       <div className="card card-side flex-col md:flex-row bg-[rgb(28,28,34)] text-white shadow-2xl w-full max-w-7xl h-auto overflow-hidden border border-neutral-800">
@@ -74,7 +116,7 @@ console.log(handleSubmit);
             </span>
           </h2>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-4" noValidate>
             {/* Display Server Errors */}
             {error && (
               <div className="p-3 bg-red-500/10 border border-red-500/50 rounded-lg text-red-400 text-sm">

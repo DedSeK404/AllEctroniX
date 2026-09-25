@@ -40,7 +40,7 @@ export default function DashBoard() {
       <Navbar parts={parts} onSelectCategory={setSelectedCategory} onSelectView={setCurrentView} />
       {/* Conditional Rendering based on state */}
       {currentView === "catalog" ? (
-        <ProductGrid parts={parts} selectedCategory={selectedCategory} />
+        <ProductGrid  selectedCategory={selectedCategory} />
       ) : (
         <AssistantMainPage />
       )}
