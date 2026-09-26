@@ -25,6 +25,7 @@ export const fetchCurrentUser = async () => {
   return response.data;
 };
 
+
 export const logoutUser = () => {
   localStorage.removeItem('token');
 }; 

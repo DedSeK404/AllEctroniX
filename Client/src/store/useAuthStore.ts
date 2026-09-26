@@ -12,6 +12,7 @@ interface AuthState {
   user: User | null;
   isAuthenticated: boolean;
   login: (token: string, user: User) => void;
+  setUser: (user: User | null) => void; // 👈 Declared in interface
   logout: () => void;
 }
 
@@ -29,6 +30,9 @@ export const useAuthStore = create<AuthState>((set) => ({
       isAuthenticated: true,
     });
   },
+
+  // Properly typed setter for restoring session on refresh
+  setUser: (user: User | null) => set({ user, isAuthenticated: !!user }),
 
   // Clears active session and token from localStorage
   logout: () => {

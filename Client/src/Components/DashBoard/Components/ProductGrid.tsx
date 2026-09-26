@@ -1,5 +1,5 @@
 import { Part } from "@/Types/types";
-import { fetchParts } from "@/api/partsService";
+import { fetchParts } from "@/api/partService";
 import { useEffect, useState } from "react";
 import ProductCard from "./ProductCard";
 

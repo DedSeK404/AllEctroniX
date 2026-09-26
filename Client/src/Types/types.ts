@@ -9,6 +9,7 @@ export interface Part {
   describe?: string;
   price?: number;
   stock?: number;
+  file?: string;
 }
 
 export interface PaginatedPartsResponse {

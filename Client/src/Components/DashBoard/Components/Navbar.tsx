@@ -1,34 +1,48 @@
 import { Part } from "@/Types/types";
 import { useNavigate } from "react-router-dom";
 import { useAuthStore } from "../../../store/useAuthStore";
-import { useCartStore } from "@/Components/DashBoard/Components/useCartStore";
+import { useFrontendCartStore } from "@/Components/DashBoard/Components/useCartStore";
 import UserProfile from "@/Components/UserProfile/UserProfile";
 import Logo from "../../../assets/images/logo.svg";
 import AiAssistantDropdown from "./AssistantDropdown";
 import Cart from "./Cart";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { fetchCurrentUser } from "@/api/AuthService";
 
 interface NavbarProps {
-  parts: Part[];
   onSelectCategory: (category: string) => void;
   onSelectView: (currentView: "catalog" | "assistant") => void;
-}
-export interface CartItem {
-  part: Part;
-  quantity: number;
 }
 
 const Navbar = ({ onSelectCategory, onSelectView }: NavbarProps) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const navigate = useNavigate();
 
-  const user = useAuthStore((state) => state.user);
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
 
-  // Access cart state and action methods from Zustand store
+  // Access cart state and methods
+  const items = useFrontendCartStore((state) => state.items);
+  const totalItems = items.reduce((sum, item) => sum + item.quantity, 0);
 
+  const user = useAuthStore((state) => state.user);
+  const setUser = useAuthStore((state) => state.setUser);
+  const logout = useAuthStore((state) => state.logout);
 
-  const totalItems = useCartStore((state) => state.getTotalItems());
+ useEffect(() => {
+    const loadUser = async () => {
+      try {
+        const userData = await fetchCurrentUser();
+        setUser(userData);
+      } catch (error) {
+        console.error("Session verification failed:", error);
+        logout(); // 👈 Clears localStorage token and store state if token is expired/invalid
+      }
+    };
+
+    if (localStorage.getItem("token") && !user) {
+      loadUser();
+    }
+  }, [user, setUser, logout]);
 
   return (
     <div className="navbar bg-neutral shadow-sm border-b border-base-200">
@@ -251,7 +265,6 @@ const Navbar = ({ onSelectCategory, onSelectView }: NavbarProps) => {
                 onSelectView={onSelectView}
                 onClose={() => {
                   setIsMenuOpen(false);
-                  // Closes the native browser popover when a selection is made
                   document.getElementById("d2")?.hidePopover();
                 }}
               />
@@ -260,8 +273,8 @@ const Navbar = ({ onSelectCategory, onSelectView }: NavbarProps) => {
         </div>
       </div>
 
-      {/* Action / User Controls */}
-      <div className="navbar-end gap-3">
+      {/* Action / User Controls - Added flex-1 justify-end to fix positioning */}
+      <div className="navbar-end flex-1 justify-end items-center gap-3">
         {/* Shopping Cart Dropdown */}
         <div className="dropdown dropdown-end">
           <div tabIndex={0} role="button" className="btn btn-ghost btn-circle">
@@ -318,4 +331,5 @@ const Navbar = ({ onSelectCategory, onSelectView }: NavbarProps) => {
     </div>
   );
 };
+
 export default Navbar;

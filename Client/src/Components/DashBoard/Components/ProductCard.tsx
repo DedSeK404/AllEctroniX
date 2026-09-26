@@ -1,18 +1,21 @@
 import React, { useState } from "react";
 import { Part } from "@/Types/types";
-import { useCartStore } from "@/Components/DashBoard/Components/useCartStore";
+import { useBackendCartStore } from "@/api/cartService";
+import { useFrontendCartStore } from "./useCartStore";
 
 interface ProductCardProps {
-  part: Part | any;
+  part: Part;
 }
 
 const ProductCard: React.FC<ProductCardProps> = ({ part }) => {
   const [quantity, setQuantity] = useState<number>(1);
-  
-  // 1. Get addItem (not addToCart) from the Zustand store
-  const addItem = useCartStore((state) => state.addItem);
+  const [isAdding, setIsAdding] = useState<boolean>(false);
 
-  // Direct extraction with safe fallbacks
+  // Extract store actions
+  const addItem = useFrontendCartStore((state) => state.addItem);
+  const isLoading = useBackendCartStore((state) => state.isLoading);
+
+  // Fallbacks
   const {
     brand = "Generic",
     code = "N/A",
@@ -24,7 +27,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ part }) => {
     price = 0,
     stock = 0,
     file = "",
-  } = part;
+  } = part || {};
 
   const handleDecrement = () => {
     setQuantity((prev) => Math.max(1, prev - 1));
@@ -46,22 +49,18 @@ const ProductCard: React.FC<ProductCardProps> = ({ part }) => {
   };
 
   const handleAddToCart = () => {
-    // 2. Format a clean Part object to pass to addItem
-    const itemToAdd: Part = {
-      code,
-      brand,
-      model,
-      category: category || type,
-      describe,
-      price: Number(price),
-      stock: Number(stock),
-      package: pkg,
-      file,
-    };
+    if (!code || code === "N/A") return;
 
-    // 3. Call addItem with formatted item & current selected quantity
-    addItem(itemToAdd, quantity);
+    setIsAdding(true);
+    // Pass the full part object, NOT just the string code
+    addItem(part, quantity);
+    
+    setTimeout(() => {
+      setIsAdding(false);
+    }, 200); // Small UI feedback delay
   };
+
+  const isButtonDisabled = Number(stock) <= 0 || isAdding || isLoading;
 
   return (
     <div className="card bg-base-100 border border-base-200 shadow-sm hover:shadow-md transition-all flex flex-col justify-between rounded-xl overflow-hidden h-full">
@@ -153,6 +152,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ part }) => {
                 type="button"
                 onClick={handleDecrement}
                 className="join-item btn btn-sm btn-ghost px-2.5 min-h-0 h-9"
+                disabled={isAdding}
               >
                 -
               </button>
@@ -163,11 +163,13 @@ const ProductCard: React.FC<ProductCardProps> = ({ part }) => {
                 className="join-item input input-sm w-12 text-center p-0 min-h-0 h-9 focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                 min="1"
                 max={stock || undefined}
+                disabled={isAdding}
               />
               <button
                 type="button"
                 onClick={handleIncrement}
                 className="join-item btn btn-sm btn-ghost px-2.5 min-h-0 h-9"
+                disabled={isAdding}
               >
                 +
               </button>
@@ -176,9 +178,13 @@ const ProductCard: React.FC<ProductCardProps> = ({ part }) => {
             <button
               onClick={handleAddToCart}
               className="btn btn-primary btn-sm flex-1 h-9 min-h-0"
-              disabled={Number(stock) <= 0}
+              disabled={isButtonDisabled}
             >
-              Add to Cart
+              {isAdding ? (
+                <span className="loading loading-spinner loading-xs"></span>
+              ) : (
+                "Add to Cart"
+              )}
             </button>
           </div>
         </div>

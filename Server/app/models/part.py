@@ -5,7 +5,7 @@ class Part(Base):
     __tablename__ = "parts"
 
     id = Column(Integer, primary_key=True, index=True)
-    code = Column(String, index=True, nullable=False)  # e.g., C13661
+    code = Column(String, index=True, nullable=False, unique=True)  # e.g., C13661
     brand = Column(String, index=True, nullable=True)
     package = Column(String, nullable=True)
     category = Column(String, index=True, nullable=True)

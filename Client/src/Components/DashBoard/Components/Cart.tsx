@@ -1,23 +1,28 @@
-import React from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useCartStore } from "@/Components/DashBoard/Components/useCartStore";
-import { CartItem } from './Navbar';
-
+import { useNavigate } from "react-router-dom";
+import {
+  CartItem,
+  useFrontendCartStore,
+} from "@/Components/DashBoard/Components/useCartStore";
 
 const Cart = () => {
   const navigate = useNavigate();
 
-  // Access cart state and action methods directly from Zustand
-  const items = useCartStore((state) => state.items);
-  const totalItems = useCartStore((state) => state.getTotalItems());
-  const totalPrice = useCartStore((state) => state.getTotalPrice());
-  const updateQuantity = useCartStore((state) => state.updateQuantity);
-  const removeItem = useCartStore((state) => state.removeItem);
+  // Extract items and action methods from Zustand
+  const items = useFrontendCartStore((state) => state.items);
+  const updateQuantity = useFrontendCartStore((state) => state.updateQuantity);
+  const removeItem = useFrontendCartStore((state) => state.removeItem);
+
+  // Derived values computed cleanly on render
+  const totalItems = items.reduce((acc, item) => acc + item.quantity, 0);
+  const totalPrice = items.reduce(
+    (acc, item) => acc + (item.part.price ?? 0) * item.quantity,
+    0
+  );
 
   return (
     <div
       tabIndex={0}
-      className="dropdown-content card card-compact w-80 sm:w-96 p-2 shadow-lg bg-base-100 rounded-box border border-base-200 z-[100]"
+      className="dropdown-content card card-compact w-80 sm:w-96 p-2 shadow-lg bg-base-100 rounded-box border border-base-200 z-50"
     >
       <div className="card-body">
         <span className="font-bold text-lg">{totalItems} Items</span>
@@ -41,7 +46,7 @@ const Cart = () => {
                     {item.part.model || item.part.code}
                   </p>
                   <p className="text-xs text-gray-500">
-                    ${item.part.price.toFixed(2)} each
+                    ${(item.part.price ?? 0).toFixed(2)} each
                   </p>
                 </div>
 
