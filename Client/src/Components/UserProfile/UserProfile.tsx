@@ -1,12 +1,8 @@
-import { useAuthStore, User } from "@/store/useAuthStore";
+import { useAuthStore} from "@/store/useAuthStore";
 import { useNavigate } from "react-router-dom";
 
-// 1. Use the shared User interface or make fields optional
-interface UserProfileProps {
-  user: User;
-}
-
-const UserProfile = ({ user }: UserProfileProps) => {
+const UserProfile = () => {
+  const user = useAuthStore((state) => state.user);
   const navigate = useNavigate();
   const logout = useAuthStore((state) => state.logout);
 
@@ -16,28 +12,33 @@ const UserProfile = ({ user }: UserProfileProps) => {
   };
 
   // Safe fallback for display name & avatar initial
-  const displayName =
-    user?.username || user?.email?.split("@")[0] || "User";
+  const displayName = user?.username || user?.email?.split("@")[0] || "User";
   const avatarInitial = displayName.charAt(0).toUpperCase();
 
   return (
     <div className="navbar-end gap-2">
+      
       <div className="dropdown dropdown-end">
+        {/* Fixed-size wrapper container that won't inflate or push adjacent items */}
         <div
           tabIndex={0}
           role="button"
-          className="btn btn-ghost btn-circle avatar border border-[#B100D6]"
+          className="relative inline-flex items-center justify-center w-10 h-10 rounded-full cursor-pointer group focus:outline-none"
         >
-          <div className="w-10 rounded-full flex items-center justify-center bg-neutral-800 text-white font-bold">
+      
+          {/* Main Avatar Circle with Solid Background */}
+          <div className="relative w-full h-full rounded-full flex items-center justify-center bg-neutral-900 text-white font-bold border-2 border-[#7E116E] shadow-[0_0_10px_rgba(244,48,152,0.3)] group-hover:shadow-[0_0_18px_rgba(244,48,152,0.6)] group-hover:border-[#F43098] transition-all duration-300">
             {avatarInitial}
           </div>
         </div>
+
         <ul
           tabIndex={0}
-          className="menu menu-sm dropdown-content mt-3 z-50 p-2 shadow-lg bg-neutral-900 rounded-box w-52 border border-neutral-800"
+          className="menu menu-sm dropdown-content z-50 p-2 shadow-lg bg-neutral-900 rounded-box w-52 mt-5"
         >
+          <div className="absolute inset-0 bg-linear-to-r from-purple-600/30 via-indigo-500/20 to-purple-800/30 blur-2xl opacity-60 pointer-events-none -z-10" />
           <li className="px-3 py-2 border-b border-neutral-800 pointer-events-none select-none">
-            <span className="font-semibold text-[#B100D6] p-0 block">
+            <span className="font-semibold text-[#F43098] p-0 block">
               {displayName}
             </span>
             <span className="text-xs text-neutral-400 p-0 block">

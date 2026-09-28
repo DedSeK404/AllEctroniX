@@ -6,12 +6,10 @@ from app.db.session import Base, engine
 
 # 2. Import ALL models so SQLAlchemy registers them for table creation
 # (Ensure your Cart model is also imported if you have one, e.g., from app.models.cart import Cart)
-from app.models.component import ComponentModel
 from app.models.user import UserModel
 from app.models.part import Part
 
 # 3. Router imports
-from app.api.endpoints.component import router as components_router
 from app.api.endpoints.user import router as auth_router
 from app.api.endpoints.parts import router as parts_router
 from app.api.endpoints.cart import router as cart_router
@@ -39,9 +37,6 @@ app.add_middleware(
 Base.metadata.create_all(bind=engine)
 
 # Include Routers directly on app
-app.include_router(
-    components_router, prefix="/api/components", tags=["Components"]
-)
 app.include_router(auth_router, prefix="/api/auth", tags=["Auth"])
 app.include_router(parts_router, prefix="/api/parts", tags=["Parts"])
 app.include_router(cart_router, prefix="/api/cart", tags=["Cart"])

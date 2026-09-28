@@ -12,4 +12,8 @@ class Part(Base):
     type = Column(String, index=True, nullable=True)
     describe = Column(Text, nullable=True)
     price = Column(Float, nullable=True)
-    stock = Column(Integer, default=0)
+    stock = Column(Integer, default=10)
+    file = Column(String, nullable=True)
+
+
+   

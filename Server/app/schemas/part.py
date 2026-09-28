@@ -10,6 +10,7 @@ class PartBase(BaseModel):
     describe: Optional[str] = None
     price: Optional[float] = None
     stock: Optional[int] = 0
+    file: Optional[str] = None
 
 class PartResponse(PartBase):
     id: int

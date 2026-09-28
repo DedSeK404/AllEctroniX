@@ -55,6 +55,6 @@ def get_parts(
     }
 
 @router.post("/sync", status_code=202)
-def trigger_parts_sync(background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
-    background_tasks.add_task(sync_jlcpcb_parts, db)
-    return {"message": "JLCPCB parts sync started in the background."}
+def trigger_parts_sync(background_tasks: BackgroundTasks):
+  background_tasks.add_task(sync_jlcpcb_parts)
+  return {"message": "JLCPCB parts sync started in the background."}
