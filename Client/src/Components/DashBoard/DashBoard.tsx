@@ -1,6 +1,6 @@
 import { useState } from "react";
 import Navbar from "./Components/Navbar/Navbar";
-import ProductGrid from "./Components/ProductGrid";
+import ProductGrid from "./Components/Products/ProductGrid";
 import AssistantMainPage from "../Assistant/pages/AssistantMainPage";
 
 export default function DashBoard() {

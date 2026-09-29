@@ -1,25 +1,28 @@
 import React, { useState } from "react";
 import { Part } from "@/Types/types";
-import { useBackendCartStore } from "@/api/cartService";
-import { useFrontendCartStore } from "./useCartStore";
+import { getComponentImage } from "@/Types/ImageTypes";
+import { useCartStore } from "@/api/cartService";
 
 interface ProductCardProps {
   part: Part;
 }
 
 const ProductCard: React.FC<ProductCardProps> = ({ part }) => {
+  const imageUrl = getComponentImage(part.type, part.category, part.describe);
+
   const [quantity, setQuantity] = useState<number>(1);
   const [isAdding, setIsAdding] = useState<boolean>(false);
 
   // Extract store actions
-  const addItem = useFrontendCartStore((state) => state.addItem);
-  const isLoading = useBackendCartStore((state) => state.isLoading);
+
+  const isLoading = useCartStore((state) => state.isLoading);
+
+  const addItemB = useCartStore((state) => state.addItem);
 
   // Fallbacks
   const {
     brand = "Generic",
     code = "N/A",
-    model = "",
     category = "",
     type = "",
     package: pkg = "SMD",
@@ -52,7 +55,8 @@ const ProductCard: React.FC<ProductCardProps> = ({ part }) => {
     if (!code || code === "N/A") return;
 
     setIsAdding(true);
-    addItem(part, quantity);
+
+    addItemB(part.code, quantity); // Add to backend cart as well
 
     setTimeout(() => {
       setIsAdding(false);
@@ -60,21 +64,30 @@ const ProductCard: React.FC<ProductCardProps> = ({ part }) => {
   };
 
   const isButtonDisabled = Number(stock) <= 0 || isAdding || isLoading;
-  console.log("ProductCard Rendered:", part);
+
   return (
     // Outer wrapper handles the glow/gradient border effect
     <div className="relative rounded-2xl p-px bg-linear-to-r from-purple-500 via-indigo-500 to-purple-600 shadow-xl overflow-hidden h-full flex flex-col">
       {/* Inner body background: explicitly dark and translucent so the gradient forms a glowing border */}
       <div className="flex flex-col justify-between flex-1 bg-zinc-950/85 backdrop-blur-md rounded-[15px] overflow-hidden">
         {/* Card Image Figure */}
-        <figure className="aspect-video w-full overflow-hidden bg-zinc-900/50">
-          <img
-            src="/Circuit.jpg"
-            alt={model || code}
-            className="w-full h-full object-cover opacity-90 hover:opacity-100 transition-opacity"
-          />
-        </figure>
-
+        <button className="hover-3d cursor-pointer">
+          <figure className="aspect-video w-full overflow-hidden rounded-xl bg-zinc-900/50">
+            <img
+              src={imageUrl}
+              alt={part.code}
+              className="w-full h-full object-cover opacity-90 hover:opacity-100 transition-opacity duration-300"
+            />
+          </figure>
+          <div></div>
+          <div></div>
+          <div></div>
+          <div></div>
+          <div></div>
+          <div></div>
+          <div></div>
+          <div></div>
+        </button>
         {/* Main Content Area */}
         <div className="p-4 flex flex-col justify-between flex-1">
           <div>
@@ -151,6 +164,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ part }) => {
             </div>
 
             {/* Quantity Controls & Add to Cart */}
+
             <div className="flex gap-2 items-center">
               <div className="flex items-center border border-zinc-700 rounded-lg bg-zinc-900 overflow-hidden">
                 <button

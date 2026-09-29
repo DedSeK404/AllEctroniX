@@ -1,4 +1,4 @@
-import { useAuthStore} from "@/store/useAuthStore";
+import { useAuthStore } from "@/store/useAuthStore";
 import { useNavigate } from "react-router-dom";
 
 const UserProfile = () => {
@@ -8,7 +8,7 @@ const UserProfile = () => {
 
   const handleLogout = () => {
     logout();
-    navigate("/login/signin");
+    navigate("/");
   };
 
   // Safe fallback for display name & avatar initial
@@ -17,7 +17,6 @@ const UserProfile = () => {
 
   return (
     <div className="navbar-end gap-2">
-      
       <div className="dropdown dropdown-end">
         {/* Fixed-size wrapper container that won't inflate or push adjacent items */}
         <div
@@ -25,7 +24,6 @@ const UserProfile = () => {
           role="button"
           className="relative inline-flex items-center justify-center w-10 h-10 rounded-full cursor-pointer group focus:outline-none"
         >
-      
           {/* Main Avatar Circle with Solid Background */}
           <div className="relative w-full h-full rounded-full flex items-center justify-center bg-neutral-900 text-white font-bold border-2 border-[#7E116E] shadow-[0_0_10px_rgba(244,48,152,0.3)] group-hover:shadow-[0_0_18px_rgba(244,48,152,0.6)] group-hover:border-[#F43098] transition-all duration-300">
             {avatarInitial}

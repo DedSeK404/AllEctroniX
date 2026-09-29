@@ -1,11 +1,14 @@
-import { create } from 'zustand';
-import apiClient from './Client';
+import { create } from "zustand";
+import apiClient from "./Client";
 
-// Interfaces matching your Pydantic/FastAPI schemas
+import { Part } from "@/Types/types";
+
 export interface CartItem {
   id: number;
+  part: Part;
   part_code: string;
   quantity: number;
+
 }
 
 export interface CartResponse {
@@ -27,7 +30,7 @@ interface CartState {
   clearCart: () => Promise<void>;
 }
 
-export const useBackendCartStore = create<CartState>((set) => ({
+export const useCartStore = create<CartState>((set) => ({
   items: [],
   isLoading: false,
   error: null,
@@ -36,11 +39,12 @@ export const useBackendCartStore = create<CartState>((set) => ({
   fetchCart: async () => {
     set({ isLoading: true, error: null });
     try {
-      const response = await apiClient.get<CartResponse>('/api/cart/');
+      const response = await apiClient.get<CartResponse>("/cart/");
       set({ items: response.data.items, isLoading: false });
+     
     } catch (err: any) {
       set({
-        error: err.response?.data?.detail || 'Failed to fetch cart',
+        error: err.response?.data?.detail || "Failed to fetch cart",
         isLoading: false,
       });
     }
@@ -50,15 +54,15 @@ export const useBackendCartStore = create<CartState>((set) => ({
   addItem: async (partCode: string, quantity = 1) => {
     set({ isLoading: true, error: null });
     try {
-      const response = await apiClient.post<CartResponse>('/api/cart/items/', {
+      const response = await apiClient.post<CartResponse>("/cart/items/", { 
         part_code: partCode,
         quantity,
       });
-      console.log('AddItem Response:', response);
+      
       set({ items: response.data.items, isLoading: false });
     } catch (err: any) {
       set({
-        error: err.response?.data?.detail || 'Failed to add item',
+        error: err.response?.data?.detail || "Failed to add item",
         isLoading: false,
       });
     }
@@ -68,14 +72,15 @@ export const useBackendCartStore = create<CartState>((set) => ({
   updateQuantity: async (partCode: string, quantity: number) => {
     set({ isLoading: true, error: null });
     try {
-      const response = await apiClient.patch<CartResponse>('/api/cart/items/', {
+      const response = await apiClient.patch<CartResponse>("/cart/items/", {
         part_code: partCode,
         quantity,
       });
+     
       set({ items: response.data.items, isLoading: false });
     } catch (err: any) {
       set({
-        error: err.response?.data?.detail || 'Failed to update item quantity',
+        error: err.response?.data?.detail || "Failed to update item quantity",
         isLoading: false,
       });
     }
@@ -85,11 +90,13 @@ export const useBackendCartStore = create<CartState>((set) => ({
   removeItem: async (partCode: string) => {
     set({ isLoading: true, error: null });
     try {
-      const response = await apiClient.delete<CartResponse>(`/api/cart/items/${partCode}`);
+      const response = await apiClient.delete<CartResponse>(
+        `/cart/items/${partCode}`,
+      );
       set({ items: response.data.items, isLoading: false });
     } catch (err: any) {
       set({
-        error: err.response?.data?.detail || 'Failed to remove item',
+        error: err.response?.data?.detail || "Failed to remove item",
         isLoading: false,
       });
     }
@@ -99,11 +106,11 @@ export const useBackendCartStore = create<CartState>((set) => ({
   clearCart: async () => {
     set({ isLoading: true, error: null });
     try {
-      const response = await apiClient.delete<CartResponse>('/api/cart/');
+      const response = await apiClient.delete<CartResponse>("/cart/");
       set({ items: response.data.items, isLoading: false });
     } catch (err: any) {
       set({
-        error: err.response?.data?.detail || 'Failed to clear cart',
+        error: err.response?.data?.detail || "Failed to clear cart",
         isLoading: false,
       });
     }

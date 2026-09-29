@@ -1,0 +1,164 @@
+import { useNavigate } from "react-router-dom";
+import { useState } from "react";
+import { Eye, EyeOff, Mail, Loader2 } from "lucide-react";
+import { useAuthStore } from "@/store/useAuthStore";
+import { fetchCurrentUser, loginUser } from "@/api/AuthService";
+
+const SignInForm = () => {
+  const [email, setEmail] = useState<string>("");
+  const [password, setPassword] = useState<string>("");
+  const [showPassword, setShowPassword] = useState<boolean>(false);
+  const [error, setError] = useState<string>("");
+  const [loading, setLoading] = useState<boolean>(false);
+
+  const login = useAuthStore((state) => state.login);
+  const navigate = useNavigate();
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setError("");
+    setLoading(true);
+
+    const isValidEmail = (str: string) => /\S+@\S+\.\S+/.test(str);
+
+    if (!isValidEmail(email)) {
+      setError("Please enter a valid email address.");
+      setLoading(false);
+      return; // Stop execution here so it doesn't make the API call
+    }
+
+    try {
+      // 1. Send credentials to auth endpoint & retrieve token
+      const data = await loginUser(email, password);
+
+      if (data.access_token) {
+        // 2. Fetch authenticated user profile details
+        const userData = await fetchCurrentUser();
+
+        // 3. Update Zustand store with token and user object
+        login(data.access_token, userData);
+
+        // 4. Redirect to dashboard
+        navigate("/dashboard");
+      }
+    } catch (err: any) {
+      const detail = err.response?.data?.detail;
+
+      if (Array.isArray(detail)) {
+        // Handles FastAPI 422 validation array
+        setError(detail[0]?.msg || "Invalid input format.");
+      } else if (typeof detail === "string") {
+        // Handles FastAPI 401 incorrect credentials string
+        setError(detail);
+      } else {
+        setError("An unexpected error occurred.");
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="card-body w-full md:w-1/2 p-6 sm:p-12 overflow-y-auto flex flex-col justify-around">
+      <h2 className="card-title text-2xl flex flex-row items-baseline justify-center gap-2">
+        <span className="font-bold text-3xl sm:text-5xl text-[#B100D6]">
+          Login
+        </span>
+        <span className="text-xl sm:text-3xl text-neutral-300 font-normal">
+          your account
+        </span>
+      </h2>
+
+      <form onSubmit={handleSubmit} className="space-y-4" noValidate>
+        {/* Display Server Errors */}
+        {error && (
+          <div className="p-3 bg-red-500/10 border border-red-500/50 rounded-lg text-red-400 text-sm">
+            {error}
+          </div>
+        )}
+
+        <fieldset className="fieldset">
+          <legend className="fieldset-legend text-neutral-300 text-lg">
+            Email
+          </legend>
+          <div className="relative w-full">
+            <input
+              required
+              value={email}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                setEmail(e.target.value)
+              }
+              type="email"
+              className="input input-bordered w-full bg-neutral-900 border-neutral-700 text-white placeholder:text-neutral-500"
+              placeholder="Type your email here"
+            />
+            <button
+              type="button"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400"
+            >
+              <Mail className="w-5 h-5" />
+            </button>
+          </div>
+        </fieldset>
+
+        <fieldset className="fieldset">
+          <legend className="fieldset-legend text-neutral-300 text-lg">
+            Password
+          </legend>
+          <div className="relative w-full">
+            <input
+              required
+              value={password}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                setPassword(e.target.value)
+              }
+              type={showPassword ? "text" : "password"}
+              className="input input-bordered w-full bg-neutral-900 border-neutral-700 text-white placeholder:text-neutral-500 pr-10"
+              placeholder="*********"
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-white transition-colors cursor-pointer"
+            >
+              {showPassword ? (
+                <EyeOff className="w-5 h-5" />
+              ) : (
+                <Eye className="w-5 h-5" />
+              )}
+            </button>
+          </div>
+        </fieldset>
+
+        <div className="pt-4">
+          <button
+            type="submit"
+            onClick={() => handleSubmit}
+            disabled={loading}
+            className="btn btn-primary w-full text-lg flex items-center justify-center gap-2"
+          >
+            {loading ? (
+              <>
+                <Loader2 className="w-5 h-5 animate-spin" />
+                Signing in...
+              </>
+            ) : (
+              "Sign in"
+            )}
+          </button>
+          <p className="mt-7 text-xl">
+            Don't have an account?{" "}
+            <a
+              className="link link-hover text-[#B100D6] cursor-pointer"
+              onClick={() => navigate("/login/signup")}
+            >
+              Click here
+            </a>
+          </p>
+        </div>
+      </form>
+    </div>
+  );
+};
+
+export default SignInForm;

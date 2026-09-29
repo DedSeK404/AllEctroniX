@@ -14,6 +14,9 @@ def get_parts(
     limit: int = Query(20, ge=1, le=100),
     category: str | None = None,
     search: str | None = None,
+    sort: str | None = None,
+    in_stock: bool | None = None,
+    max_price: float | None = None,
     db: Session = Depends(get_db)
 ):
     query = db.query(Part)
@@ -40,6 +43,24 @@ def get_parts(
             )
         )
 
+    # Filter by stock availability
+    if in_stock:
+        query = query.filter(Part.stock > 0)
+
+    # Filter by maximum price threshold
+    if max_price is not None:
+        query = query.filter(Part.price <= max_price)
+
+    # Apply sorting rules
+    if sort == "oldest":
+        query = query.order_by(Part.id.asc())
+    elif sort == "price-low":
+        query = query.order_by(Part.price.asc())
+    elif sort == "price-high":
+        query = query.order_by(Part.price.desc())
+    else:  # Default to "newest"
+        query = query.order_by(Part.id.desc())
+
     total_items = query.count()
     total_pages = (total_items + limit - 1) // limit if total_items > 0 else 1
 
@@ -56,5 +77,5 @@ def get_parts(
 
 @router.post("/sync", status_code=202)
 def trigger_parts_sync(background_tasks: BackgroundTasks):
-  background_tasks.add_task(sync_jlcpcb_parts)
-  return {"message": "JLCPCB parts sync started in the background."}
+    background_tasks.add_task(sync_jlcpcb_parts)
+    return {"message": "JLCPCB parts sync started in the background."}

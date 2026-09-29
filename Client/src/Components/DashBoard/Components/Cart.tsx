@@ -1,23 +1,45 @@
+
+import { CartItem, useCartStore } from "@/api/cartService";
+import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import {
-  CartItem,
-  useFrontendCartStore,
-} from "@/Components/DashBoard/Components/useCartStore";
 
 const Cart = () => {
   const navigate = useNavigate();
 
-  // Extract items and action methods from Zustand
-  const items = useFrontendCartStore((state) => state.items);
-  const updateQuantity = useFrontendCartStore((state) => state.updateQuantity);
-  const removeItem = useFrontendCartStore((state) => state.removeItem);
+  const updateQuantityB = useCartStore((state) => state.updateQuantity);
+
+  // Extract action methods from Zustand (Backend)
+  const deleteItem = useCartStore((state) => state.removeItem);
+  const clearCartBackend = useCartStore((state) => state.clearCart);
+
+  const fetchCart = useCartStore((state) => state.fetchCart);
+  const items = useCartStore((state) => state.items);
+
+  // 1. Fetch the cart from the backend on component mount
+  useEffect(() => {
+    fetchCart();
+  }, [fetchCart]);
 
   // Derived values computed cleanly on render
   const totalItems = items.reduce((acc, item) => acc + item.quantity, 0);
   const totalPrice = items.reduce(
     (acc, item) => acc + (item.part.price ?? 0) * item.quantity,
-    0
+    0,
   );
+
+  const handleDelete = (code: string) => {
+    deleteItem(code);
+  };
+
+  const handleClearCart = () => {
+    clearCartBackend();
+  };
+  const handleIncrement = (code: string, quantity: number) => {
+    updateQuantityB(code, quantity + 1);
+  };
+  const handleDecrement = (code: string, quantity: number) => {
+    updateQuantityB(code, quantity - 1);
+  };
 
   return (
     <div
@@ -61,7 +83,7 @@ const Cart = () => {
                   <button
                     className="btn btn-xs btn-ghost hover:bg-base-300"
                     onClick={() =>
-                      updateQuantity(item.part.code, item.quantity - 1)
+                      handleDecrement(item.part.code, item.quantity)
                     }
                   >
                     -
@@ -72,7 +94,7 @@ const Cart = () => {
                   <button
                     className="btn btn-xs btn-ghost hover:bg-base-300"
                     onClick={() =>
-                      updateQuantity(item.part.code, item.quantity + 1)
+                      handleIncrement(item.part.code, item.quantity)
                     }
                   >
                     +
@@ -82,7 +104,7 @@ const Cart = () => {
                 {/* Remove Button */}
                 <button
                   className="btn btn-xs btn-ghost text-error hover:bg-error/10"
-                  onClick={() => removeItem(item.part.code)}
+                  onClick={() => handleDelete(item.part.code)}
                   title="Remove item"
                 >
                   ✕
@@ -94,13 +116,22 @@ const Cart = () => {
 
         <div className="divider my-1 opacity-15"></div>
 
-        {/* Subtotal & Checkout */}
+        {/* Subtotal */}
         <div className="flex justify-between items-center font-bold text-base px-1">
           <span>Subtotal:</span>
           <span className="text-primary">${totalPrice.toFixed(2)}</span>
         </div>
 
-        <div className="card-actions mt-2">
+        {/* Card Actions: Clear Cart & Checkout Buttons */}
+        <div className="card-actions flex flex-col gap-2 mt-2">
+          <button
+            className="btn btn-outline btn-error btn-xs sm:btn-sm font-medium w-full"
+            disabled={items.length === 0}
+            onClick={handleClearCart}
+          >
+            Clear Cart
+          </button>
+
           <button
             className="btn btn-primary btn-block font-medium"
             disabled={items.length === 0}
