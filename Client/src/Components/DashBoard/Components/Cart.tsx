@@ -1,16 +1,16 @@
-
 import { CartItem, useCartStore } from "@/api/cartService";
-import { useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
 
 const Cart = () => {
-  const navigate = useNavigate();
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   const updateQuantityB = useCartStore((state) => state.updateQuantity);
 
   // Extract action methods from Zustand (Backend)
   const deleteItem = useCartStore((state) => state.removeItem);
   const clearCartBackend = useCartStore((state) => state.clearCart);
+  const checkoutCart = useCartStore((state) => state.checkoutCart);
+  const isLoading = useCartStore((state) => state.isLoading);
 
   const fetchCart = useCartStore((state) => state.fetchCart);
   const items = useCartStore((state) => state.items);
@@ -41,107 +41,156 @@ const Cart = () => {
     updateQuantityB(code, quantity - 1);
   };
 
+  // Handle Order Confirmation via Zustand store
+  const handleConfirmOrder = async () => {
+    const result = await checkoutCart();
+    if (result) {
+      setIsModalOpen(false);
+    }
+  };
+
   return (
-    <div
-      tabIndex={0}
-      className="dropdown-content card card-compact w-80 sm:w-96 p-2 shadow-xl bg-base-100 text-base-content rounded-box border border-base-300 z-50 mt-5"
-    >
-      <div className="absolute inset-0 bg-linear-to-r from-purple-600/30 via-indigo-500/20 to-purple-800/30 blur-2xl opacity-60 pointer-events-none -z-10" />
-      <div className="card-body">
-        <div className="flex justify-between items-center">
-          <span className="font-bold text-lg">Your Cart</span>
-          <span className="badge badge-primary badge-sm font-semibold">
-            {totalItems} {totalItems === 1 ? "Item" : "Items"}
-          </span>
-        </div>
+    <>
+      <div
+        tabIndex={0}
+        className="dropdown-content card card-compact w-80 sm:w-96 p-2 shadow-xl bg-base-100 text-base-content rounded-box border border-base-300 z-50 mt-5"
+      >
+        <div className="absolute inset-0 bg-linear-to-r from-purple-600/30 via-indigo-500/20 to-purple-800/30 blur-2xl opacity-60 pointer-events-none -z-10" />
+        <div className="card-body">
+          <div className="flex justify-between items-center">
+            <span className="font-bold text-lg">Your Cart</span>
+            <span className="badge badge-primary badge-sm font-semibold">
+              {totalItems} {totalItems === 1 ? "Item" : "Items"}
+            </span>
+          </div>
 
-        <div className="divider my-1 opacity-15"></div>
+          <div className="divider my-1 opacity-15"></div>
 
-        {/* Items List */}
-        <div className="max-h-60 overflow-y-auto space-y-3 pr-1">
-          {items.length === 0 ? (
-            <p className="text-center text-base-content/60 py-6 text-sm">
-              Your cart is empty.
-            </p>
-          ) : (
-            items.map((item: CartItem) => (
-              <div
-                key={item.part.code}
-                className="flex items-center justify-between gap-2 border-b border-white/20 pb-3"
-              >
-                <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-sm truncate text-base-content">
-                    {item.part.model || item.part.code}
-                  </p>
-                  <p className="text-xs text-base-content/60 text-primary">
-                    ${(item.part.price ?? 0).toFixed(2)} each
-                  </p>
-                </div>
-
-                {/* Quantity Selector */}
-                <div className="flex items-center gap-1 bg-base-200/60 p-1 rounded-lg">
-                  <button
-                    className="btn btn-xs btn-ghost hover:bg-base-300"
-                    onClick={() =>
-                      handleDecrement(item.part.code, item.quantity)
-                    }
-                  >
-                    -
-                  </button>
-                  <span className="text-xs font-semibold px-1 min-w-5 text-center">
-                    {item.quantity}
-                  </span>
-                  <button
-                    className="btn btn-xs btn-ghost hover:bg-base-300"
-                    onClick={() =>
-                      handleIncrement(item.part.code, item.quantity)
-                    }
-                  >
-                    +
-                  </button>
-                </div>
-
-                {/* Remove Button */}
-                <button
-                  className="btn btn-xs btn-ghost text-error hover:bg-error/10"
-                  onClick={() => handleDelete(item.part.code)}
-                  title="Remove item"
+          {/* Items List */}
+          <div className="max-h-60 overflow-y-auto space-y-3 pr-1">
+            {items.length === 0 ? (
+              <p className="text-center text-base-content/60 py-6 text-sm">
+                Your cart is empty.
+              </p>
+            ) : (
+              items.map((item: CartItem) => (
+                <div
+                  key={item.part.code}
+                  className="flex items-center justify-between gap-2 border-b border-white/20 pb-3"
                 >
-                  ✕
-                </button>
-              </div>
-            ))
-          )}
-        </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-sm truncate text-base-content">
+                      {item.part.model || item.part.code}
+                    </p>
+                    <p className="text-xs text-base-content/60 text-primary">
+                      ${(item.part.price ?? 0).toFixed(2)} each
+                    </p>
+                  </div>
 
-        <div className="divider my-1 opacity-15"></div>
+                  {/* Quantity Selector */}
+                  <div className="flex items-center gap-1 bg-base-200/60 p-1 rounded-lg">
+                    <button
+                      className="btn btn-xs btn-ghost hover:bg-base-300"
+                      onClick={() =>
+                        handleDecrement(item.part.code, item.quantity)
+                      }
+                    >
+                      -
+                    </button>
+                    <span className="text-xs font-semibold px-1 min-w-5 text-center">
+                      {item.quantity}
+                    </span>
+                    <button
+                      className="btn btn-xs btn-ghost hover:bg-base-300"
+                      onClick={() =>
+                        handleIncrement(item.part.code, item.quantity)
+                      }
+                    >
+                      +
+                    </button>
+                  </div>
 
-        {/* Subtotal */}
-        <div className="flex justify-between items-center font-bold text-base px-1">
-          <span>Subtotal:</span>
-          <span className="text-primary">${totalPrice.toFixed(2)}</span>
-        </div>
+                  {/* Remove Button */}
+                  <button
+                    className="btn btn-xs btn-ghost text-error hover:bg-error/10"
+                    onClick={() => handleDelete(item.part.code)}
+                    title="Remove item"
+                  >
+                    ✕
+                  </button>
+                </div>
+              ))
+            )}
+          </div>
 
-        {/* Card Actions: Clear Cart & Checkout Buttons */}
-        <div className="card-actions flex flex-col gap-2 mt-2">
-          <button
-            className="btn btn-outline btn-error btn-xs sm:btn-sm font-medium w-full"
-            disabled={items.length === 0}
-            onClick={handleClearCart}
-          >
-            Clear Cart
-          </button>
+          <div className="divider my-1 opacity-15"></div>
 
-          <button
-            className="btn btn-primary btn-block font-medium"
-            disabled={items.length === 0}
-            onClick={() => navigate("/cart")}
-          >
-            View Cart / Checkout
-          </button>
+          {/* Subtotal */}
+          <div className="flex justify-between items-center font-bold text-base px-1">
+            <span>Subtotal:</span>
+            <span className="text-primary">${totalPrice.toFixed(2)}</span>
+          </div>
+
+          {/* Card Actions: Clear Cart & Place Order Buttons */}
+          <div className="card-actions flex flex-col gap-2 mt-2">
+            <button
+              className="btn btn-outline btn-error btn-xs sm:btn-sm font-medium w-full"
+              disabled={items.length === 0 || isLoading}
+              onClick={handleClearCart}
+            >
+              Clear Cart
+            </button>
+
+            <button
+              className="btn btn-primary btn-block font-medium"
+              disabled={items.length === 0 || isLoading}
+              onClick={() => setIsModalOpen(true)}
+            >
+              Place Order
+            </button>
+          </div>
         </div>
       </div>
-    </div>
+
+      {/* Confirmation Modal */}
+      {isModalOpen && (
+        <dialog className="modal modal-open">
+          <div className="modal-box">
+            <h3 className="font-bold text-lg">Confirm Order</h3>
+            <p className="py-4">
+              Are you sure you want to place this order for standard total of{" "}
+              <span className="font-semibold text-primary">
+                ${totalPrice.toFixed(2)}
+              </span>
+              ?
+            </p>
+            <div className="modal-action">
+              <button
+                className="btn btn-ghost"
+                onClick={() => setIsModalOpen(false)}
+                disabled={isLoading}
+              >
+                No, Cancel
+              </button>
+              <button
+                className="btn btn-primary"
+                onClick={handleConfirmOrder}
+                disabled={isLoading}
+              >
+                {isLoading ? (
+                  <span className="loading loading-spinner loading-xs"></span>
+                ) : (
+                  "Yes, Place Order"
+                )}
+              </button>
+            </div>
+          </div>
+          <form method="dialog" className="modal-backdrop">
+            <button onClick={() => setIsModalOpen(false)}>close</button>
+          </form>
+        </dialog>
+      )}
+    </>
   );
 };
 

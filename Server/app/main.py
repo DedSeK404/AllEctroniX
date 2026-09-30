@@ -1,21 +1,51 @@
+from contextlib import asynccontextmanager
+import asyncio
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-# 1. Import Base and engine from session
-from app.db.session import Base, engine
-
-# 2. Import ALL models so SQLAlchemy registers them for table creation
-# (Ensure your Cart model is also imported if you have one, e.g., from app.models.cart import Cart)
-from app.models.user import UserModel
+# Database and Session imports
+from app.db.session import Base, engine, SessionLocal
 from app.models.part import Part
+from app.models.user import UserModel
+# Import sync service
+from app.api.services.parts_sync import sync_jlcpcb_parts
 
-# 3. Router imports
+# Router imports
 from app.api.endpoints.user import router as auth_router
 from app.api.endpoints.parts import router as parts_router
 from app.api.endpoints.cart import router as cart_router
 
-# Initialize single FastAPI instance
-app = FastAPI(title="AllEctronix AI Repair API", version="1.0.0")
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # --- STARTUP LOGIC ---
+    # 1. Create database tables if they don't exist
+    Base.metadata.create_all(bind=engine)
+
+    # 2. Check if DB is empty and auto-trigger initial sync in the background
+    db = SessionLocal()
+    try:
+        if db.query(Part).count() == 0:
+            print("Database is empty. Initializing JLCPCB parts sync in background...")
+            # Runs sync_jlcpcb_parts in an asynchronous worker thread without blocking startup
+            asyncio.create_task(asyncio.to_thread(sync_jlcpcb_parts))
+    except Exception as e:
+        print(f"Error checking DB during startup: {e}")
+    finally:
+        db.close()
+
+    yield
+
+    # --- SHUTDOWN LOGIC ---
+    # (Clean up resources here if needed in the future)
+
+
+# Initialize single FastAPI instance with lifespan
+app = FastAPI(
+    title="AllEctronix AI Repair API",
+    version="1.0.0",
+    lifespan=lifespan
+)
 
 # Configure CORS Middleware
 origins = [
@@ -32,9 +62,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-# Create tables in database
-Base.metadata.create_all(bind=engine)
 
 # Include Routers directly on app
 app.include_router(auth_router, prefix="/api/auth", tags=["Auth"])

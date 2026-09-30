@@ -1,5 +1,7 @@
 from sqlalchemy.orm import Session
-from app.models.cart import Cart, CartItem
+from app.models.cart import Cart, CartItem, CartHistory
+from app.models.part import Part
+from typing import List
 from app.schemas.cart import CartItemCreate
 
 
@@ -13,6 +15,52 @@ def get_or_create_cart(db: Session, user_id: int) -> Cart:
     db.commit()
     db.refresh(new_cart)
     return new_cart
+def checkout_cart(db: Session, user_id: int) -> CartHistory:
+    """
+    Finds the active cart, creates a frozen snapshot of items, and posts to history.
+    """
+    cart = get_or_create_cart(db, user_id)
+    
+    if not cart.items:
+        raise ValueError("Cannot checkout an empty cart.")
+
+    # 1. Build immutable snapshot of items and product details
+    snapshot = []
+    for item in cart.items:
+        # Match using 'part' (lowercase) and 'Part.code' (model attribute)
+        part = db.query(Part).filter(Part.code == item.part_code).first()
+        
+        snapshot.append({
+            "part_code": item.part_code,
+            "product_name": (part.type or part.describe or part.code) if part else f"Part #{item.part_code}",
+            "price": float(part.price) if (part and part.price is not None) else 0.0,
+            "image_url": part.file if part else None,
+            "quantity": item.quantity
+        })
+
+    # 2. Create immutable history record
+    cart_history = CartHistory(
+        cart_id=cart.id,
+        user_id=user_id,
+        items_snapshot=snapshot
+    )
+    db.add(cart_history)
+
+    # 3. Clear active cart items
+    for item in list(cart.items):
+        db.delete(item)
+
+    db.commit()
+    db.refresh(cart_history)
+
+    return cart_history
+
+
+def get_user_order_history(db: Session, user_id: int) -> List[CartHistory]:
+    """
+    Retrieves all historical orders for a user.
+    """
+    return db.query(CartHistory).filter(CartHistory.user_id == user_id).order_by(CartHistory.creation_date.desc()).all()
 
 def add_item_to_cart(db: Session, user_id: int, item_data: CartItemCreate) -> Cart:
     cart = get_or_create_cart(db, user_id)

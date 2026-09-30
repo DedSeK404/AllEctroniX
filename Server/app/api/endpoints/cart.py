@@ -1,8 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-
 from app.db.session import get_db
-from app.schemas.cart import CartItemCreate, CartItemUpdate, CartResponse
+from app.schemas.cart import CartItemCreate, CartItemUpdate, CartResponse, CartHistoryResponse, CartHistory
+from typing import List
 from app.api.services import cart as cart_service
 from app.models.user import UserModel as User # Import your User model here
 from app.core.deps import get_current_user # Import your auth dependency here
@@ -23,6 +23,18 @@ def get_user_cart(
     cart= cart_service.get_or_create_cart(db, current_user.id)
     return cart
 
+@router.post("/checkout", response_model=CartHistoryResponse)
+def checkout_order(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    try:
+        return cart_service.checkout_cart(db=db, user_id=current_user.id)
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+
+
+@router.get("/history", response_model=List[CartHistoryResponse])
+def get_order_history(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    return cart_service.get_user_order_history(db=db, user_id=current_user.id)
+
 @router.post("/items", response_model=CartResponse)
 def add_item_to_user_cart(
     item_data: CartItemCreate, 
@@ -31,6 +43,23 @@ def add_item_to_user_cart(
 ):
     """
     Add an item to the current user's cart.
+    """
+    cart = cart_service.add_item_to_cart(
+        db=db, 
+        user_id=current_user.id, 
+        item_data=item_data
+    )
+    return cart
+
+@router.post("/cart/history", response_model=CartHistoryResponse)
+def create_cart_history(
+    item_data: CartHistory, 
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    user_cart: CartHistory = Depends(get_user_cart)
+):
+    """
+    Create cart history
     """
     cart = cart_service.add_item_to_cart(
         db=db, 

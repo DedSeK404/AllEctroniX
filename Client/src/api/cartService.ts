@@ -1,6 +1,5 @@
 import { create } from "zustand";
 import apiClient from "./Client";
-
 import { Part } from "@/Types/types";
 
 export interface CartItem {
@@ -8,7 +7,6 @@ export interface CartItem {
   part: Part;
   part_code: string;
   quantity: number;
-
 }
 
 export interface CartResponse {
@@ -17,8 +15,16 @@ export interface CartResponse {
   items: CartItem[];
 }
 
+export interface CartHistoryRecord {
+  id: number;
+  cart_id: number;
+  user_id: number;
+  creation_date: string;
+}
+
 interface CartState {
   items: CartItem[];
+  orderHistory: CartHistoryRecord[];
   isLoading: boolean;
   error: string | null;
 
@@ -28,10 +34,15 @@ interface CartState {
   updateQuantity: (partCode: string, quantity: number) => Promise<void>;
   removeItem: (partCode: string) => Promise<void>;
   clearCart: () => Promise<void>;
+  
+  // History & Checkout Actions
+  checkoutCart: () => Promise<CartHistoryRecord | null>;
+  fetchOrderHistory: () => Promise<void>;
 }
 
 export const useCartStore = create<CartState>((set) => ({
   items: [],
+  orderHistory: [],
   isLoading: false,
   error: null,
 
@@ -41,7 +52,6 @@ export const useCartStore = create<CartState>((set) => ({
     try {
       const response = await apiClient.get<CartResponse>("/cart/");
       set({ items: response.data.items, isLoading: false });
-     
     } catch (err: any) {
       set({
         error: err.response?.data?.detail || "Failed to fetch cart",
@@ -54,11 +64,10 @@ export const useCartStore = create<CartState>((set) => ({
   addItem: async (partCode: string, quantity = 1) => {
     set({ isLoading: true, error: null });
     try {
-      const response = await apiClient.post<CartResponse>("/cart/items/", { 
+      const response = await apiClient.post<CartResponse>("/cart/items/", {
         part_code: partCode,
         quantity,
       });
-      
       set({ items: response.data.items, isLoading: false });
     } catch (err: any) {
       set({
@@ -76,7 +85,6 @@ export const useCartStore = create<CartState>((set) => ({
         part_code: partCode,
         quantity,
       });
-     
       set({ items: response.data.items, isLoading: false });
     } catch (err: any) {
       set({
@@ -91,7 +99,7 @@ export const useCartStore = create<CartState>((set) => ({
     set({ isLoading: true, error: null });
     try {
       const response = await apiClient.delete<CartResponse>(
-        `/cart/items/${partCode}`,
+        `/cart/items/${partCode}`
       );
       set({ items: response.data.items, isLoading: false });
     } catch (err: any) {
@@ -111,6 +119,41 @@ export const useCartStore = create<CartState>((set) => ({
     } catch (err: any) {
       set({
         error: err.response?.data?.detail || "Failed to clear cart",
+        isLoading: false,
+      });
+    }
+  },
+
+  // Checkout active cart via POST /api/cart/checkout
+  checkoutCart: async () => {
+    set({ isLoading: true, error: null });
+    try {
+      const response = await apiClient.post<CartHistoryRecord>("/cart/checkout");
+      // Clear local active cart items & append new record to history state
+      set((state) => ({
+        items: [],
+        orderHistory: [response.data, ...state.orderHistory],
+        isLoading: false,
+      }));
+      return response.data;
+    } catch (err: any) {
+      set({
+        error: err.response?.data?.detail || "Failed to confirm order",
+        isLoading: false,
+      });
+      return null;
+    }
+  },
+
+  // Fetch past orders via GET /api/cart/history
+  fetchOrderHistory: async () => {
+    set({ isLoading: true, error: null });
+    try {
+      const response = await apiClient.get<CartHistoryRecord[]>("/cart/history");
+      set({ orderHistory: response.data, isLoading: false });
+    } catch (err: any) {
+      set({
+        error: err.response?.data?.detail || "Failed to fetch order history",
         isLoading: false,
       });
     }
