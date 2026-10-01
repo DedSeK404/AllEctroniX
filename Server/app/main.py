@@ -1,19 +1,22 @@
-from contextlib import asynccontextmanager
 import asyncio
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 # Database and Session imports
-from app.db.session import Base, engine, SessionLocal
+from app.db.session import Base, SessionLocal, engine
+from app.models.chat import Conversation, Message  # Ensure models are imported so Base registers them
 from app.models.part import Part
 from app.models.user import UserModel
+
 # Import sync service
 from app.api.services.parts_sync import sync_jlcpcb_parts
 
 # Router imports
-from app.api.endpoints.user import router as auth_router
-from app.api.endpoints.parts import router as parts_router
 from app.api.endpoints.cart import router as cart_router
+from app.api.endpoints.chat import router as chat_router
+from app.api.endpoints.parts import router as parts_router
+from app.api.endpoints.user import router as auth_router
 
 
 @asynccontextmanager
@@ -67,6 +70,7 @@ app.add_middleware(
 app.include_router(auth_router, prefix="/api/auth", tags=["Auth"])
 app.include_router(parts_router, prefix="/api/parts", tags=["Parts"])
 app.include_router(cart_router, prefix="/api/cart", tags=["Cart"])
+app.include_router(chat_router, prefix="/api/chat", tags=["Diagnostic Chat"])
 
 
 @app.get("/")
