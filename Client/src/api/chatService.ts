@@ -17,6 +17,12 @@ export interface Conversation {
   updated_at: string;
 }
 
+export interface PaginatedMessagesResponse {
+  messages: Message[];
+  has_more: boolean;
+  next_cursor: string | number | null;
+}
+
 export const chatService = {
   // Fetch active conversations
   getConversations: async (): Promise<Conversation[]> => {
@@ -24,10 +30,16 @@ export const chatService = {
     return response.data;
   },
 
-  // Fetch message history for a specific conversation
-  getMessages: async (conversationId: string): Promise<Message[]> => {
-    const response = await apiClient.get<Message[]>(
-      `/chat/conversations/${conversationId}/messages`
+  // Fetch paginated message history for a specific conversation
+  getMessages: async (
+    conversationId: string,
+    beforeId?: string | number | null
+  ): Promise<PaginatedMessagesResponse> => {
+    const response = await apiClient.get<PaginatedMessagesResponse>(
+      `/chat/conversations/${conversationId}/messages`,
+      {
+        params: beforeId ? { before_id: beforeId } : {},
+      }
     );
     return response.data;
   },
@@ -44,4 +56,3 @@ export const chatService = {
     return `${protocol}//${host}/api/chat/ws?user_id=${userId}`;
   },
 };
-

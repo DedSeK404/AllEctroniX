@@ -1,4 +1,5 @@
 import apiClient from './Client';
+import { useChatStore } from './useChatStore';
 
 export interface RegisterPayload {
   username: string;
@@ -27,5 +28,9 @@ export const fetchCurrentUser = async () => {
 
 
 export const logoutUser = () => {
+  // 1. Disconnect active WebSocket and wipe conversations from store
+  useChatStore.getState().reset();
+
+  // 2. Clear token from storage
   localStorage.removeItem('token');
-}; 
+};

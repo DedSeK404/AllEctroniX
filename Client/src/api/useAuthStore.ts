@@ -1,4 +1,6 @@
+// store/useAuthStore.ts
 import { create } from "zustand";
+import { useChatStore } from "@/api/useChatStore"; // 👈 Import useChatStore
 
 export interface User {
   id: string | number;
@@ -12,7 +14,7 @@ interface AuthState {
   user: User | null;
   isAuthenticated: boolean;
   login: (token: string, user: User) => void;
-  setUser: (user: User | null) => void; // 👈 Declared in interface
+  setUser: (user: User | null) => void;
   logout: () => void;
 }
 
@@ -21,7 +23,6 @@ export const useAuthStore = create<AuthState>((set) => ({
   user: null,
   isAuthenticated: !!localStorage.getItem("token"),
 
-  // Called after successful authentication & fetching /api/auth/me
   login: (token: string, user: User) => {
     localStorage.setItem("token", token);
     set({
@@ -31,11 +32,13 @@ export const useAuthStore = create<AuthState>((set) => ({
     });
   },
 
-  // Properly typed setter for restoring session on refresh
   setUser: (user: User | null) => set({ user, isAuthenticated: !!user }),
 
-  // Clears active session and token from localStorage
   logout: () => {
+    // 1. Wipe chat store & disconnect WebSockets 👈 ADD THIS LINE
+    useChatStore.getState().reset();
+
+    // 2. Clear token & auth state
     localStorage.removeItem("token");
     set({
       token: null,

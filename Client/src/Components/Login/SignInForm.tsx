@@ -1,7 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { Eye, EyeOff, Mail, Lock, Loader2, AlertCircle } from "lucide-react";
-import { useAuthStore } from "@/store/useAuthStore";
+import { useAuthStore } from "../../api/useAuthStore";
 import { fetchCurrentUser, loginUser } from "@/api/AuthService";
 
 const SignInForm = () => {

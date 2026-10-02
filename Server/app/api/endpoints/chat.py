@@ -1,5 +1,6 @@
-from typing import List
-from fastapi import APIRouter, Depends, HTTPException, status, WebSocket, WebSocketDisconnect
+from typing import List, Optional
+from fastapi import APIRouter, Depends, HTTPException, Query, status, WebSocket, WebSocketDisconnect
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.api.services import chat as chat_service
@@ -9,6 +10,18 @@ from app.models.user import UserModel as User
 from app.schemas.chat import ConversationOut, MessageOut
 
 router = APIRouter()
+
+
+# --- SCHEMAS ---
+
+class PaginatedMessagesResponse(BaseModel):
+    messages: List[MessageOut]
+    has_more: bool
+    next_cursor: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
 
 # --- REST ENDPOINTS ---
 
@@ -21,18 +34,20 @@ def get_user_conversations(
     return chat_service.get_user_conversations(db=db, user_id=current_user.id)
 
 
-@router.get("/conversations/{conversation_id}/messages", response_model=List[MessageOut])
+@router.get("/conversations/{conversation_id}/messages", response_model=PaginatedMessagesResponse)
 def get_conversation_history(
     conversation_id: str,
+    before_id: Optional[str] = Query(None),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """Fetch the complete message log for a specific conversation session."""
+    """Fetch paginated message history for a specific conversation session."""
     try:
         return chat_service.get_messages_by_conversation(
             db=db, 
             conversation_id=conversation_id, 
-            user_id=current_user.id
+            user_id=current_user.id,
+            before_id=before_id
         )
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))

@@ -12,6 +12,9 @@ interface ChatStore {
   conversations: Conversation[];
   activeConversationId: string | null;
   messages: Message[];
+  hasMore: boolean;
+  nextCursor: number | string | null;
+  isLoadingMore: boolean;
   isStreaming: boolean;
   isLoading: boolean;
   socket: WebSocket | null;
@@ -19,6 +22,7 @@ interface ChatStore {
   // Actions
   fetchConversations: () => Promise<void>;
   selectConversation: (conversationId: string) => Promise<void>;
+  fetchOlderMessages: () => Promise<void>;
   startNewChat: () => void;
   deleteConversation: (conversationId: string) => Promise<void>;
 
@@ -26,15 +30,26 @@ interface ChatStore {
   initWebSocket: (userId: number | string) => void;
   disconnectWebSocket: () => void;
   sendMessage: (content: string, imageBase64?: string) => void;
+
+  // Clear store state on logout
+  reset: () => void;
 }
 
-export const useChatStore = create<ChatStore>((set, get) => ({
+// Default state object for easy resetting
+const initialChatState = {
   conversations: [],
   activeConversationId: null,
   messages: [],
+  hasMore: false,
+  nextCursor: null,
+  isLoadingMore: false,
   isStreaming: false,
   isLoading: false,
   socket: null,
+};
+
+export const useChatStore = create<ChatStore>((set, get) => ({
+  ...initialChatState,
 
   fetchConversations: async () => {
     set({ isLoading: true });
@@ -48,18 +63,60 @@ export const useChatStore = create<ChatStore>((set, get) => ({
   },
 
   selectConversation: async (conversationId: string) => {
-    set({ activeConversationId: conversationId, isLoading: true });
+    set({
+      activeConversationId: conversationId,
+      isLoading: true,
+      hasMore: false,
+      nextCursor: null,
+    });
     try {
-      const history = await chatService.getMessages(conversationId);
-      set({ messages: history, isLoading: false });
+      // Backend now returns { messages, has_more, next_cursor }
+      const data = await chatService.getMessages(conversationId);
+      set({
+        messages: data.messages || [],
+        hasMore: data.has_more ?? false,
+        nextCursor: data.next_cursor ?? null,
+        isLoading: false,
+      });
     } catch (error) {
       console.error("Failed to load conversation history:", error);
       set({ isLoading: false });
     }
   },
 
+  fetchOlderMessages: async () => {
+    const { activeConversationId, nextCursor, hasMore, isLoadingMore } = get();
+
+    if (!activeConversationId || !nextCursor || !hasMore || isLoadingMore) {
+      return;
+    }
+
+    set({ isLoadingMore: true });
+
+    try {
+      // Fetch older history chunk using cursor parameter (before_id)
+      const data = await chatService.getMessages(activeConversationId, nextCursor);
+
+      set((state) => ({
+        // Prepend older messages to top of current array
+        messages: [...(data.messages || []), ...state.messages],
+        hasMore: data.has_more ?? false,
+        nextCursor: data.next_cursor ?? null,
+        isLoadingMore: false,
+      }));
+    } catch (error) {
+      console.error("Failed to fetch older messages:", error);
+      set({ isLoadingMore: false });
+    }
+  },
+
   startNewChat: () => {
-    set({ activeConversationId: null, messages: [] });
+    set({
+      activeConversationId: null,
+      messages: [],
+      hasMore: false,
+      nextCursor: null,
+    });
   },
 
   deleteConversation: async (conversationId: string) => {
@@ -70,6 +127,8 @@ export const useChatStore = create<ChatStore>((set, get) => ({
         activeConversationId:
           state.activeConversationId === conversationId ? null : state.activeConversationId,
         messages: state.activeConversationId === conversationId ? [] : state.messages,
+        hasMore: state.activeConversationId === conversationId ? false : state.hasMore,
+        nextCursor: state.activeConversationId === conversationId ? null : state.nextCursor,
       }));
     } catch (error) {
       console.error("Failed to delete conversation:", error);
@@ -86,19 +145,12 @@ export const useChatStore = create<ChatStore>((set, get) => ({
 
     const currentWs = get().socket;
 
-    // Prevent duplicate connection if already open or connecting
     if (
       currentWs &&
       (currentWs.readyState === WebSocket.OPEN ||
         currentWs.readyState === WebSocket.CONNECTING)
     ) {
       return;
-    }
-
-    // Clean up closed or stale socket before opening a new one
-    if (currentWs) {
-      currentWs.onclose = null;
-      currentWs.close();
     }
 
     const wsUrl = chatService.createWebSocketUrl(numericUserId);
@@ -124,7 +176,6 @@ export const useChatStore = create<ChatStore>((set, get) => ({
             set((state) => {
               const lastMsg = state.messages[state.messages.length - 1];
 
-              // If the last message is already the active assistant stream, append to it
               if (lastMsg && lastMsg.sender === "assistant") {
                 const updatedMessages = [...state.messages];
                 updatedMessages[updatedMessages.length - 1] = {
@@ -133,7 +184,6 @@ export const useChatStore = create<ChatStore>((set, get) => ({
                 };
                 return { messages: updatedMessages };
               } else {
-                // Generate a unique ID per response stream to prevent React key collisions
                 const newAssistantMsg: Message = {
                   id: `stream-assistant-${Date.now()}`,
                   conversation_id: data.conversation_id,
@@ -179,10 +229,22 @@ export const useChatStore = create<ChatStore>((set, get) => ({
 
   disconnectWebSocket: () => {
     const ws = get().socket;
-    if (ws) {
-      ws.onclose = null; // Detach listeners to prevent state leaks during unmount
-      ws.close();
-      set({ socket: null, isStreaming: false, isLoading: false });
+    if (!ws) return;
+
+    set({ socket: null, isStreaming: false, isLoading: false });
+
+    ws.onopen = null;
+    ws.onmessage = null;
+    ws.onerror = null;
+
+    if (ws.readyState === WebSocket.CONNECTING) {
+      ws.onclose = null;
+      ws.onopen = () => {
+        ws.close(1000, "Component unmounted during connection phase");
+      };
+    } else if (ws.readyState === WebSocket.OPEN) {
+      ws.onclose = null;
+      ws.close(1000, "Component unmounted");
     }
   },
 
@@ -197,7 +259,6 @@ export const useChatStore = create<ChatStore>((set, get) => ({
 
     const { activeConversationId } = get();
 
-    // 1. Optimistically append User Message to UI state
     const optimisticUserMsg: Message = {
       id: `user-${Date.now()}`,
       conversation_id: activeConversationId || "temp",
@@ -211,7 +272,6 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       isStreaming: true,
     }));
 
-    // 2. Dispatch payload via WebSocket
     const payload: WebSocketPayload = {
       content,
       conversation_id: activeConversationId || undefined,
@@ -219,5 +279,10 @@ export const useChatStore = create<ChatStore>((set, get) => ({
     };
 
     ws.send(JSON.stringify(payload));
+  },
+
+  reset: () => {
+    get().disconnectWebSocket();
+    set(initialChatState);
   },
 }));

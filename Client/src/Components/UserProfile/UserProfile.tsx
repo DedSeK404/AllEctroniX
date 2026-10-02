@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useAuthStore } from "@/store/useAuthStore";
+import { useAuthStore } from "../../api/useAuthStore";
 import { useCartStore } from "@/api/cartService";
 import { useNavigate } from "react-router-dom";
 import { Cpu, PackageCheck, X } from "lucide-react";

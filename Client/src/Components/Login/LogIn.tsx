@@ -1,7 +1,7 @@
+// src/Components/Login/LogIn.tsx
 import { useParams } from "react-router-dom";
 import SignInForm from "./SignInForm";
 import SignUpForm from "./SignUpForm";
-import DashBoard from "../DashBoard/DashBoard";
 import Logo from "../../assets/images/logo.svg";
 
 const LogIn = () => {
@@ -98,13 +98,7 @@ const LogIn = () => {
               aria-hidden="true"
             />
             <div className="relative z-10 w-full">
-              {mode === "signin" ? (
-                <SignInForm />
-              ) : mode === "signup" ? (
-                <SignUpForm />
-              ) : (
-                <DashBoard />
-              )}
+              {mode === "signup" ? <SignUpForm /> : <SignInForm />}
             </div>
           </div>
         </div>

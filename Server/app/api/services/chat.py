@@ -1,24 +1,26 @@
 import base64
 import json
 import os
-from typing import List
+import time
+from typing import List, Optional
+
 import anyio
+from dotenv import load_dotenv
 from fastapi import WebSocket
 from google import genai
 from google.genai import types
-from sqlalchemy.orm import Session
-from dotenv import load_dotenv
-import time
 from google.genai.errors import APIError
+from sqlalchemy import desc
+from sqlalchemy.orm import Session
+
 from app.models.chat import Conversation, Message
 
+MODEL_NAME = "gemini-3.5-flash-lite"
+MAX_CONTEXT_MESSAGES = 30  # 👈 CHANGE THIS TO 30 LATER for production!
 
-MODEL_NAME = "gemini-3.5-flash-lite"  # Long-term stable workhorse model
-# Load environment variables from .env file
 load_dotenv()
 
 api_key = os.getenv("GEMINI_API_KEY")
-
 if not api_key:
     raise ValueError("GEMINI_API_KEY is not set. Please check your .env file.")
 
@@ -35,8 +37,17 @@ def get_user_conversations(db: Session, user_id: int) -> List[Conversation]:
     )
 
 
-def get_messages_by_conversation(db: Session, conversation_id: str, user_id: int) -> List[Message]:
-    """Retrieves all messages for a specific user conversation."""
+def get_messages_by_conversation(
+    db: Session,
+    conversation_id: str,
+    user_id: int,
+    limit: int = 6,  # 👈 CHANGE THIS TO 30 LATER (Default batch size for UI pagination)
+    before_id: Optional[int] = None,
+) -> dict:
+    """
+    Retrieves paginated messages for a specific user conversation using cursor-based pagination.
+    Returns messages ordered chronologically (asc) alongside pagination metadata.
+    """
     conv = (
         db.query(Conversation)
         .filter(
@@ -49,12 +60,28 @@ def get_messages_by_conversation(db: Session, conversation_id: str, user_id: int
     if not conv:
         raise ValueError("Conversation not found.")
 
-    return (
-        db.query(Message)
-        .filter(Message.conversation_id == conversation_id)
-        .order_by(Message.created_at.asc())
-        .all()
-    )
+    query = db.query(Message).filter(Message.conversation_id == conversation_id)
+
+    # Apply cursor filter if user is scrolling up for older history
+    if before_id:
+        target_msg = db.query(Message).filter(Message.id == before_id).first()
+        if target_msg:
+            query = query.filter(Message.created_at < target_msg.created_at)
+
+    # Fetch newest records matching the cursor limit in descending order
+    messages_desc = query.order_by(desc(Message.created_at)).limit(limit + 1).all()
+
+    has_more = len(messages_desc) > limit
+    paginated_messages = messages_desc[:limit]
+
+    # Re-sort chronologically (ascending) for UI rendering
+    paginated_messages.reverse()
+
+    return {
+        "messages": paginated_messages,
+        "has_more": has_more,
+        "next_cursor": paginated_messages[0].id if paginated_messages and has_more else None,
+    }
 
 
 def soft_delete_conversation(db: Session, conversation_id: str, user_id: int) -> None:
@@ -85,7 +112,6 @@ def _fetch_gemini_stream(contents_payload: list):
                     chunks.append(chunk.text)
             return chunks
         except APIError as e:
-            # Handle temporary server busy (503) or brief rate limits (429)
             if e.code in (503, 429) and attempt < 2:
                 time.sleep(1)
                 continue
@@ -93,14 +119,9 @@ def _fetch_gemini_stream(contents_payload: list):
         except Exception as e:
             raise e
 
-        
-
 
 async def process_websocket_message(
-    db: Session, 
-    websocket: WebSocket, 
-    user_id: int, 
-    raw_data: str
+    db: Session, websocket: WebSocket, user_id: int, raw_data: str
 ):
     """
     Handles payload parsing, conversation creation, multi-turn history loading,
@@ -127,41 +148,38 @@ async def process_websocket_message(
         conv = (
             db.query(Conversation)
             .filter(
-                Conversation.id == conv_id, 
+                Conversation.id == conv_id,
                 Conversation.user_id == user_id,
-                Conversation.is_deleted == False
+                Conversation.is_deleted == False,
             )
             .first()
         )
         if not conv:
-            await websocket.send_json({"type": "ERROR", "message": "Conversation not found or access denied."})
+            await websocket.send_json(
+                {"type": "ERROR", "message": "Conversation not found or access denied."}
+            )
             return
 
     # 2. Persist User Message
-    user_msg = Message(
-        conversation_id=conv_id,
-        sender="user",
-        content=content
-    )
+    user_msg = Message(conversation_id=conv_id, sender="user", content=content)
     db.add(user_msg)
     db.commit()
 
-    # 3. Construct Multi-Turn Contents Payload for Gemini
+
     history_messages = (
         db.query(Message)
         .filter(Message.conversation_id == conv_id)
-        .order_by(Message.created_at.asc())
+        .order_by(desc(Message.created_at))
+        .limit(MAX_CONTEXT_MESSAGES) 
         .all()
     )
+    history_messages.reverse()  # Restore ascending chronological order
 
     contents_payload = []
     for msg in history_messages:
         role = "user" if msg.sender == "user" else "model"
         contents_payload.append(
-            types.Content(
-                role=role,
-                parts=[types.Part.from_text(text=msg.content)]
-            )
+            types.Content(role=role, parts=[types.Part.from_text(text=msg.content)])
         )
 
     # Append image data if present in current message
@@ -172,26 +190,28 @@ async def process_websocket_message(
                 types.Part.from_bytes(data=image_bytes, mime_type="image/jpeg")
             )
         except Exception as e:
-            await websocket.send_json({"type": "ERROR", "message": f"Invalid base64 image data: {str(e)}"})
+            await websocket.send_json(
+                {"type": "ERROR", "message": f"Invalid base64 image data: {str(e)}"}
+            )
             return
 
     # 4. Stream Response safely using worker thread execution
     chunks = await anyio.to_thread.run_sync(_fetch_gemini_stream, contents_payload)
-    
+
     full_response_text = ""
     for chunk_text in chunks:
         full_response_text += chunk_text
-        await websocket.send_json({
-            "type": "STREAM_CHUNK",
-            "conversation_id": conv_id,
-            "delta": chunk_text
-        })
+        await websocket.send_json(
+            {
+                "type": "STREAM_CHUNK",
+                "conversation_id": conv_id,
+                "delta": chunk_text,
+            }
+        )
 
     # 5. Persist Assistant Response
     assistant_msg = Message(
-        conversation_id=conv_id,
-        sender="assistant",
-        content=full_response_text
+        conversation_id=conv_id, sender="assistant", content=full_response_text
     )
     db.add(assistant_msg)
 
@@ -202,9 +222,11 @@ async def process_websocket_message(
     db.commit()
 
     # 7. Notify Stream Completion
-    await websocket.send_json({
-        "type": "STREAM_END",
-        "conversation_id": conv_id,
-        "message_id": assistant_msg.id,
-        "title": conv.title
-    })
+    await websocket.send_json(
+        {
+            "type": "STREAM_END",
+            "conversation_id": conv_id,
+            "message_id": assistant_msg.id,
+            "title": conv.title,
+        }
+    )

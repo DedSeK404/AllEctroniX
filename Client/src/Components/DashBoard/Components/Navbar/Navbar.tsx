@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { useAuthStore } from "../../../../store/useAuthStore";
+import { useAuthStore } from "../../../../api/useAuthStore";
 
 import UserProfile from "@/Components/UserProfile/UserProfile";
 import Logo from "../../../../assets/images/logo.svg";
