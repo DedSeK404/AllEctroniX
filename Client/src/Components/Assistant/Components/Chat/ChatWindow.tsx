@@ -3,6 +3,8 @@ import { useChatStore } from "../../../../api/useChatStore";
 import { useAuthStore } from "../../../../api/useAuthStore";
 
 const ChatWindow = () => {
+  const user = useAuthStore((state) => state.user);
+
   const [input, setInput] = useState("");
   const chatEndRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -110,13 +112,34 @@ const ChatWindow = () => {
     }
   };
 
+  const displayName = user?.username || user?.email?.split("@")[0] || "User";
+  const avatarInitial = displayName.charAt(0).toUpperCase();
+
   return (
-    <div className="flex flex-col h-full bg-base-300 overflow-x-hidden">
+    <div className="relative flex flex-col h-full bg-base-300 overflow-hidden">
+      {/* Prominent Multi-Layer Ambient Background Glows */}
+      <div className="pointer-events-none absolute inset-0 z-0 overflow-hidden">
+        {/* Top-Left Vibrant Purple/Indigo Glow */}
+        <div
+          className="absolute -top-32 -left-32 w-120 h-120 rounded-full bg-linear-to-br from-purple-600/45 via-indigo-600/35 to-transparent blur-3xl opacity-100 animate-pulse"
+          style={{ animationDuration: "7s" }}
+          aria-hidden="true"
+        />
+
+        {/* Bottom-Right Deep Purple Glow */}
+        <div
+          className="absolute -bottom-32 -right-32 w-120 h-120 rounded-full bg-linear-to-tl from-purple-700/50 via-indigo-700/35 to-transparent blur-3xl opacity-100 animate-pulse"
+          style={{ animationDuration: "10s" }}
+          aria-hidden="true"
+        />
+      </div>
+
       {/* Top Header */}
-      <div className="navbar bg-base-100 border-b border-base-200 px-6 shadow-sm flex-none">
+      <div className="navbar bg-base-100/70 backdrop-blur-md border-b border-purple-900/30 px-6 shadow-sm flex-none z-10">
+      
         <div className="flex-1 gap-3">
           <div className="avatar online">
-            <div className="w-10 rounded-full ring ring-primary ring-offset-base-100 ring-offset-2">
+            <div className="w-10 rounded-full ring ring-purple-600 ring-offset-base-100 ring-offset-2">
               <img
                 src="https://img.daisyui.com/images/stock/photo-1534528741775-53994a69daeb.webp"
                 alt="AI Assistant"
@@ -124,8 +147,10 @@ const ChatWindow = () => {
             </div>
           </div>
           <div>
-            <h2 className="font-bold text-base">AllEctronix Copilot</h2>
-            <p className="text-xs text-base-content/60">
+            <h2 className="font-bold text-base text-base-content">
+              AllEctronix Copilot
+            </h2>
+            <p className="text-xs text-purple-400">
               {isStreaming ? "Streaming response..." : "Active now"}
             </p>
           </div>
@@ -136,22 +161,22 @@ const ChatWindow = () => {
       <div
         ref={scrollContainerRef}
         onScroll={handleScroll}
-        className="flex-1 overflow-y-auto overflow-x-hidden p-4 sm:p-6 space-y-4 min-w-0"
+        className="flex-1 overflow-y-auto overflow-x-hidden p-4 sm:p-6 space-y-4 min-w-0 z-10"
       >
         {isLoadingMore && (
           <div className="flex justify-center py-2">
-            <span className="loading loading-spinner loading-md text-primary"></span>
+            <span className="loading loading-spinner loading-md text-purple-500"></span>
           </div>
         )}
 
         {isLoading && messages.length === 0 ? (
           <div className="flex justify-center items-center h-full">
-            <span className="loading loading-spinner loading-lg text-primary"></span>
+            <span className="loading loading-spinner loading-lg text-purple-500"></span>
           </div>
         ) : messages.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-full text-base-content/50">
+          <div className="flex flex-col items-center justify-center h-full text-base-content/60">
             <p className="text-lg font-medium">No messages yet</p>
-            <p className="text-sm">
+            <p className="text-sm text-center">
               Start a conversation or upload a PCB photo for instant diagnostic!
             </p>
           </div>
@@ -165,23 +190,34 @@ const ChatWindow = () => {
               >
                 <div className="chat-image avatar">
                   <div className="w-10 rounded-full">
-                    <img
-                      src="https://img.daisyui.com/images/stock/photo-1534528741775-53994a69daeb.webp"
-                      alt="Avatar"
-                    />
+                    {msg.sender === "user" ? (
+                      <div
+                        tabIndex={0}
+                        role="button"
+                        className="relative inline-flex items-center justify-center w-10 h-10 rounded-full group focus:outline-none"
+                      >
+                        <div className="relative w-full h-full rounded-full flex items-center justify-center bg-neutral-900 text-white font-bold border-2 border-[#7E116E] shadow-[0_0_10px_rgba(244,48,152,0.3)]">
+                          {avatarInitial}
+                        </div>
+                      </div>
+                    ) : (
+                      <img
+                        src="https://img.daisyui.com/images/stock/photo-1534528741775-53994a69daeb.webp"
+                        alt="AI Assistant"
+                      />
+                    )}
                   </div>
                 </div>
-                <div className="chat-header text-xs opacity-50 mb-1">
+                <div className="chat-header text-xs opacity-60 mb-1">
                   {isUser ? "You" : "Copilot"}
                 </div>
 
-                {/* Fixed Bubble Container: break-all forces continuous long text to break */}
                 <div
-                  className={`chat-bubble ${
+                  className={`chat-bubble shadow-lg whitespace-pre-wrap break-all max-w-[85%] sm:max-w-[75%] ${
                     isUser
-                      ? "chat-bubble-primary text-primary-content"
-                      : "chat-bubble-neutral text-neutral-content"
-                  } shadow-md whitespace-pre-wrap break-all max-w-[85%] sm:max-w-[75%]`}
+                      ? "bg-linear-to-r from-purple-700 to-indigo-600 text-white shadow-purple-900/30"
+                      : "bg-black text-white border border-purple-900/30 shadow-black/50"
+                  }`}
                 >
                   {msg.content}
                 </div>
@@ -210,8 +246,8 @@ const ChatWindow = () => {
                   />
                 </div>
               </div>
-              <div className="chat-bubble chat-bubble-neutral flex items-center gap-1 py-3">
-                <span className="loading loading-dots loading-xs"></span>
+              <div className="chat-bubble bg-black text-white border border-purple-900/30 flex items-center gap-1 py-3">
+                <span className="loading loading-dots loading-xs text-purple-400"></span>
               </div>
             </div>
           )}
@@ -219,11 +255,12 @@ const ChatWindow = () => {
         <div ref={chatEndRef} />
       </div>
 
-      {/* Dynamic Input Bar Container */}
-      <div className="p-4 bg-base-100 border-t border-base-200 flex-none">
+      {/* Standout Input Bar Container */}
+      <div className="p-4 bg-base-100/60 backdrop-blur-lg border-t border-purple-900/30 flex-none z-10">
         <div className="max-w-4xl mx-auto">
-          <div className="relative flex flex-col rounded-2xl bg-base-200 border border-base-300 focus-within:border-primary focus-within:ring-1 focus-within:ring-primary transition-all p-2.5 shadow-inner">
-            {/* Top Textarea */}
+          {/* Standout Glassmorphism Card */}
+          <div className="relative flex flex-col rounded-2xl bg-base-100/90 border border-purple-500/40 focus-within:border-purple-400 focus-within:ring-2 focus-within:ring-purple-500/30 shadow-[0_0_20px_rgba(147,51,234,0.15)] focus-within:shadow-[0_0_25px_rgba(147,51,234,0.3)] transition-all duration-300 p-3">
+            {/* Textarea */}
             <textarea
               ref={textareaRef}
               rows={1}
@@ -232,20 +269,20 @@ const ChatWindow = () => {
               onKeyDown={handleKeyDown}
               placeholder="Describe your PCB issue or upload an image..."
               disabled={isStreaming}
-              className="w-full bg-transparent border-0 focus:outline-none focus:ring-0 resize-none max-h-36 overflow-y-auto px-3 py-1.5 text-sm sm:text-base leading-snug break-all"
+              className="w-full bg-transparent border-0 focus:outline-none focus:ring-0 resize-none max-h-36 overflow-y-auto px-3 py-1.5 text-sm sm:text-base leading-snug break-all text-base-content placeholder:text-white"
             />
 
             {/* Bottom Actions Bar */}
-            <div className="flex items-center justify-between pt-2 px-1 border-t border-base-300/40 mt-1">
-              {/* Prominent PCB Image Upload Button */}
-              <label className="btn btn-xs sm:btn-sm btn-ghost gap-2 rounded-xl text-xs text-base-content/70 hover:text-primary hover:bg-base-300 border border-base-300/60 cursor-pointer transition-all">
+            <div className="flex items-center justify-between pt-2.5 px-1 border-t border-purple-500/20 mt-1">
+              {/* PCB Image Upload Button */}
+              <label className="btn btn-xs sm:btn-sm btn-ghost gap-2 rounded-xl text-xs text-purple-300 hover:text-white hover:bg-purple-600/30 border border-purple-500/30 cursor-pointer transition-all shadow-xs">
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
                   fill="none"
                   viewBox="0 0 24 24"
                   strokeWidth={1.8}
                   stroke="currentColor"
-                  className="w-4 h-4 text-primary"
+                  className="w-4 h-4 text-purple-400"
                 >
                   <path
                     strokeLinecap="round"
@@ -262,12 +299,12 @@ const ChatWindow = () => {
                 />
               </label>
 
-              {/* Right Action: Send Arrow Button */}
+              {/* Glowing Send Button */}
               <button
                 type="button"
                 onClick={handleSend}
                 disabled={isStreaming || !input.trim()}
-                className="btn btn-primary btn-circle btn-sm min-h-0 h-9 w-9 p-0 flex items-center justify-center disabled:bg-base-300 disabled:text-base-content/30 transition-all"
+                className="btn btn-circle btn-sm min-h-0 h-9 w-9 p-0 flex items-center justify-center bg-linear-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white border-0 disabled:bg-base-300 disabled:text-base-content/30 shadow-[0_0_12px_rgba(147,51,234,0.4)] hover:shadow-[0_0_18px_rgba(147,51,234,0.6)] transition-all duration-200"
               >
                 {isStreaming ? (
                   <span className="loading loading-spinner loading-xs"></span>

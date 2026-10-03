@@ -7,7 +7,6 @@ import Cart from "../Cart";
 import NavBarMegaMenu from "./NavBarMegaMenu";
 import { useCartStore } from "@/api/cartService";
 
-
 interface NavbarProps {
   onSelectCategory: (category: string) => void;
   onSelectView: (currentView: "catalog" | "assistant") => void;
@@ -24,9 +23,8 @@ const Navbar = ({ onSelectCategory, onSelectView }: NavbarProps) => {
 
   const user = useAuthStore((state) => state.user);
 
-
   return (
-    <div className="navbar bg-neutral shadow-sm border-b border-base-200 w-full px-4">
+    <div className="sticky top-0 z-50 navbar bg-neutral shadow-sm border-b border-base-200 w-full px-4">
       {/* Brand Section */}
       <div className="navbar-start">
         <div className="aura text-purple-400">
