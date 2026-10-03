@@ -5,7 +5,20 @@ export interface Message {
   conversation_id: string;
   sender: "user" | "assistant";
   content: string;
-  created_at: string;
+  created_at?: string;
+  image_url?: string;
+  image_base64?: string;
+  metadata?: {
+    matched_products?: Array<{
+      id?: string | number;
+      name?: string;
+      part_number?: string;
+      price?: number | string;
+      in_stock?: boolean;
+      [key: string]: any;
+    }>;
+    [key: string]: any;
+  } | null;
 }
 
 export interface Conversation {

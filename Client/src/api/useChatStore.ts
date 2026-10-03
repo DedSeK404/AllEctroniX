@@ -35,7 +35,6 @@ interface ChatStore {
   reset: () => void;
 }
 
-// Default state object for easy resetting
 const initialChatState = {
   conversations: [],
   activeConversationId: null,
@@ -70,7 +69,6 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       nextCursor: null,
     });
     try {
-      // Backend now returns { messages, has_more, next_cursor }
       const data = await chatService.getMessages(conversationId);
       set({
         messages: data.messages || [],
@@ -94,11 +92,9 @@ export const useChatStore = create<ChatStore>((set, get) => ({
     set({ isLoadingMore: true });
 
     try {
-      // Fetch older history chunk using cursor parameter (before_id)
       const data = await chatService.getMessages(activeConversationId, nextCursor);
 
       set((state) => ({
-        // Prepend older messages to top of current array
         messages: [...(data.messages || []), ...state.messages],
         hasMore: data.has_more ?? false,
         nextCursor: data.next_cursor ?? null,
@@ -198,7 +194,25 @@ export const useChatStore = create<ChatStore>((set, get) => ({
           }
 
           case "STREAM_END": {
-            set({ isStreaming: false, isLoading: false });
+            set((state) => {
+              const updatedMessages = state.messages.map((msg, index) => {
+                if (index === state.messages.length - 1 && msg.sender === "assistant") {
+                  return {
+                    ...msg,
+                    id: data.message_id || msg.id,
+                    metadata: data.metadata || msg.metadata,
+                  };
+                }
+                return msg;
+              });
+
+              return {
+                messages: updatedMessages,
+                isStreaming: false,
+                isLoading: false,
+              };
+            });
+
             get().fetchConversations();
             break;
           }
@@ -264,6 +278,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       conversation_id: activeConversationId || "temp",
       sender: "user",
       content,
+      image_url: imageBase64,
       created_at: new Date().toISOString(),
     };
 

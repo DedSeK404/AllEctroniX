@@ -1,22 +1,24 @@
 import React, { useState, useRef, useEffect, useLayoutEffect } from "react";
 import { useChatStore } from "../../../../api/useChatStore";
 import { useAuthStore } from "../../../../api/useAuthStore";
+import ProductCard from "../../../DashBoard/Components/Products/ProductCard"; // Adjust relative import path as needed
+import { Part } from "@/Types/types";
 
 const ChatWindow = () => {
   const user = useAuthStore((state) => state.user);
 
   const [input, setInput] = useState("");
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   const chatEndRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  // Preserve scroll height across pagination loads
   const previousScrollHeightRef = useRef<number>(0);
 
-  // Safely extract userId from Auth store
   const userId = useAuthStore((state) => state.user?.id);
 
-  // Extract reactive state and actions from Chat store
   const messages = useChatStore((state) => state.messages);
   const isStreaming = useChatStore((state) => state.isStreaming);
   const isLoading = useChatStore((state) => state.isLoading);
@@ -25,7 +27,6 @@ const ChatWindow = () => {
   const fetchOlderMessages = useChatStore((state) => state.fetchOlderMessages);
   const sendMessage = useChatStore((state) => state.sendMessage);
 
-  // Dynamic height calculation for textarea
   useEffect(() => {
     const textarea = textareaRef.current;
     if (textarea) {
@@ -34,7 +35,6 @@ const ChatWindow = () => {
     }
   }, [input]);
 
-  // Initialize and clean up WebSocket connection
   useEffect(() => {
     if (userId) {
       const numericUserId = Number(userId);
@@ -49,7 +49,6 @@ const ChatWindow = () => {
     };
   }, [userId]);
 
-  // Handle scrolling up to fetch older history
   const handleScroll = () => {
     const container = scrollContainerRef.current;
     if (!container) return;
@@ -60,7 +59,6 @@ const ChatWindow = () => {
     }
   };
 
-  // Maintain relative scroll position after prepending older messages
   useLayoutEffect(() => {
     const container = scrollContainerRef.current;
     if (container && previousScrollHeightRef.current > 0) {
@@ -71,7 +69,6 @@ const ChatWindow = () => {
     }
   }, [messages.length]);
 
-  // Auto-scroll to bottom on new messages / stream updates
   const lastMessageContent = messages[messages.length - 1]?.content || "";
   useEffect(() => {
     if (previousScrollHeightRef.current === 0) {
@@ -80,17 +77,22 @@ const ChatWindow = () => {
   }, [messages.length, lastMessageContent, isStreaming]);
 
   const handleSend = () => {
-    if (!input.trim() || isStreaming) return;
+    if ((!input.trim() && !selectedImage) || isStreaming) return;
 
     const textToSend = input.trim();
-    setInput("");
+    const imageToSend = selectedImage || undefined;
 
-    // Reset height and keep focus active without losing cursor
+    setInput("");
+    setSelectedImage(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+
     if (textareaRef.current) {
       textareaRef.current.style.height = "auto";
     }
 
-    sendMessage(textToSend);
+    sendMessage(textToSend, imageToSend);
 
     requestAnimationFrame(() => {
       textareaRef.current?.focus();
@@ -107,26 +109,79 @@ const ChatWindow = () => {
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      console.log("Selected PCB image for diagnostic upload:", file);
-      // Attach image handling logic here
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setSelectedImage(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleRemoveImage = () => {
+    setSelectedImage(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
     }
   };
 
   const displayName = user?.username || user?.email?.split("@")[0] || "User";
   const avatarInitial = displayName.charAt(0).toUpperCase();
 
+  // Helper function to extract and normalize products to match ProductCard's expected Part structure
+  const extractProducts = (msg: any): Part[] => {
+    if (!msg.metadata) return [];
+
+    let rawMeta = msg.metadata;
+    if (typeof rawMeta === "string") {
+      try {
+        rawMeta = JSON.parse(rawMeta);
+      } catch (e) {
+        return [];
+      }
+    }
+
+    const rawList = rawMeta?.matched_products || rawMeta?.products || [];
+
+    return rawList.map((item: any) => {
+      // Extract price safely as a number
+      const priceVal =
+        typeof item.price === "number"
+          ? item.price
+          : parseFloat(String(item.price).replace(/[^0-9.]/g, "")) || 0;
+
+      // Normalize stock count
+      const stockVal =
+        typeof item.stock === "number"
+          ? item.stock
+          : item.in_stock
+          ? 10
+          : 0;
+
+      return {
+        code: item.code || item.part_number || item.id || "N/A",
+        brand: item.brand || "Generic",
+        category: item.category || "General",
+        type: item.type || item.category || "Component",
+        package: item.package || item.pkg || "SMD",
+        describe: item.describe || item.description || item.name || "No description available",
+        price: priceVal,
+        stock: stockVal,
+        file: item.file || item.datasheet || "",
+        // Preserve any additional fields that Part might carry
+        ...item,
+      } as Part;
+    });
+  };
+
   return (
     <div className="relative flex flex-col h-full bg-base-300 overflow-hidden">
-      {/* Prominent Multi-Layer Ambient Background Glows */}
+      {/* Background Ambient Glows */}
       <div className="pointer-events-none absolute inset-0 z-0 overflow-hidden">
-        {/* Top-Left Vibrant Purple/Indigo Glow */}
         <div
           className="absolute -top-32 -left-32 w-120 h-120 rounded-full bg-linear-to-br from-purple-600/45 via-indigo-600/35 to-transparent blur-3xl opacity-100 animate-pulse"
           style={{ animationDuration: "7s" }}
           aria-hidden="true"
         />
-
-        {/* Bottom-Right Deep Purple Glow */}
         <div
           className="absolute -bottom-32 -right-32 w-120 h-120 rounded-full bg-linear-to-tl from-purple-700/50 via-indigo-700/35 to-transparent blur-3xl opacity-100 animate-pulse"
           style={{ animationDuration: "10s" }}
@@ -136,7 +191,6 @@ const ChatWindow = () => {
 
       {/* Top Header */}
       <div className="navbar bg-base-100/70 backdrop-blur-md border-b border-purple-900/30 px-6 shadow-sm flex-none z-10">
-      
         <div className="flex-1 gap-3">
           <div className="avatar online">
             <div className="w-10 rounded-full ring ring-purple-600 ring-offset-base-100 ring-offset-2">
@@ -157,7 +211,7 @@ const ChatWindow = () => {
         </div>
       </div>
 
-      {/* Main Chat Scrollable Area */}
+      {/* Scrollable Messages Area */}
       <div
         ref={scrollContainerRef}
         onScroll={handleScroll}
@@ -183,6 +237,8 @@ const ChatWindow = () => {
         ) : (
           messages.map((msg) => {
             const isUser = msg.sender === "user";
+            const products = extractProducts(msg);
+
             return (
               <div
                 key={msg.id}
@@ -219,7 +275,31 @@ const ChatWindow = () => {
                       : "bg-black text-white border border-purple-900/30 shadow-black/50"
                   }`}
                 >
+                  {/* Image attachment inside message */}
+                  {(msg.image_url || msg.image_base64) && (
+                    <img
+                      src={msg.image_url || msg.image_base64}
+                      alt="Attached PCB"
+                      className="rounded-lg max-h-60 w-auto object-cover mb-2 border border-purple-500/30"
+                    />
+                  )}
                   {msg.content}
+
+                  {/* Render Product Cards Grid when inventory matches exist */}
+                  {!isUser && products.length > 0 && (
+                    <div className="w-full mt-4 pt-3 border-t border-purple-900/40 not-prose">
+                      <p className="text-xs font-semibold text-purple-300 mb-2">
+                        Matching Store Inventory:
+                      </p>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        {products.map((product, idx) => (
+                          <div key={product.code || idx} className="w-full text-left">
+                            <ProductCard part={product} />
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 <div className="chat-footer opacity-50 text-[10px] mt-1">
@@ -255,11 +335,40 @@ const ChatWindow = () => {
         <div ref={chatEndRef} />
       </div>
 
-      {/* Standout Input Bar Container */}
+      {/* Input Bar */}
       <div className="p-4 bg-base-100/60 backdrop-blur-lg border-t border-purple-900/30 flex-none z-10">
         <div className="max-w-4xl mx-auto">
-          {/* Standout Glassmorphism Card */}
           <div className="relative flex flex-col rounded-2xl bg-base-100/90 border border-purple-500/40 focus-within:border-purple-400 focus-within:ring-2 focus-within:ring-purple-500/30 shadow-[0_0_20px_rgba(147,51,234,0.15)] focus-within:shadow-[0_0_25px_rgba(147,51,234,0.3)] transition-all duration-300 p-3">
+            
+            {/* Selected Image Preview */}
+            {selectedImage && (
+              <div className="relative mb-2 inline-block w-fit">
+                <img
+                  src={selectedImage}
+                  alt="PCB Preview"
+                  className="w-20 h-20 object-cover rounded-lg border border-purple-500/50"
+                />
+                <button
+                  type="button"
+                  onClick={handleRemoveImage}
+                  className="absolute -top-2 -right-2 bg-red-600 text-white rounded-full p-1 hover:bg-red-700 transition-colors shadow-md"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="w-3.5 h-3.5"
+                    viewBox="0 0 20 20"
+                    fill="currentColor"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                </button>
+              </div>
+            )}
+
             {/* Textarea */}
             <textarea
               ref={textareaRef}
@@ -269,12 +378,12 @@ const ChatWindow = () => {
               onKeyDown={handleKeyDown}
               placeholder="Describe your PCB issue or upload an image..."
               disabled={isStreaming}
-              className="w-full bg-transparent border-0 focus:outline-none focus:ring-0 resize-none max-h-36 overflow-y-auto px-3 py-1.5 text-sm sm:text-base leading-snug break-all text-base-content placeholder:text-white"
+              className="w-full bg-transparent border-0 focus:outline-none focus:ring-0 resize-none max-h-36 overflow-y-auto px-3 py-1.5 text-sm sm:text-base leading-snug break-all text-base-content placeholder:text-white/60"
             />
 
             {/* Bottom Actions Bar */}
             <div className="flex items-center justify-between pt-2.5 px-1 border-t border-purple-500/20 mt-1">
-              {/* PCB Image Upload Button */}
+              {/* Attach PCB Image Button */}
               <label className="btn btn-xs sm:btn-sm btn-ghost gap-2 rounded-xl text-xs text-purple-300 hover:text-white hover:bg-purple-600/30 border border-purple-500/30 cursor-pointer transition-all shadow-xs">
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
@@ -292,6 +401,7 @@ const ChatWindow = () => {
                 </svg>
                 <span className="font-medium">Attach PCB Image</span>
                 <input
+                  ref={fileInputRef}
                   type="file"
                   accept="image/*"
                   onChange={handleImageUpload}
@@ -299,11 +409,11 @@ const ChatWindow = () => {
                 />
               </label>
 
-              {/* Glowing Send Button */}
+              {/* Send Button */}
               <button
                 type="button"
                 onClick={handleSend}
-                disabled={isStreaming || !input.trim()}
+                disabled={isStreaming || (!input.trim() && !selectedImage)}
                 className="btn btn-circle btn-sm min-h-0 h-9 w-9 p-0 flex items-center justify-center bg-linear-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white border-0 disabled:bg-base-300 disabled:text-base-content/30 shadow-[0_0_12px_rgba(147,51,234,0.4)] hover:shadow-[0_0_18px_rgba(147,51,234,0.6)] transition-all duration-200"
               >
                 {isStreaming ? (
